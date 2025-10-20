@@ -5,8 +5,6 @@ import requests
 import mwxml
 from tqdm import tqdm
 
-from config import DUMP_PATH, DUMP_URL, JSON_RAW
-
 
 def download_wikidump(url: str, filepath: str
                      ) -> None:
@@ -51,8 +49,3 @@ def parse_dump(dump_path: str, output_path: str) -> None:
                 }
         
                 out.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-
-if __name__ == "__main__":
-    download_wikidump(DUMP_URL, DUMP_PATH)
-    parse_dump(DUMP_PATH, JSON_RAW)
