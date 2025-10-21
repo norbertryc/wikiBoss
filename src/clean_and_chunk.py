@@ -216,24 +216,45 @@ def clean_section_to_text(section_code: mwparserfromhell.wikicode.Wikicode) -> T
         except Exception:
             pass
 
-    # --- NEW: protect inline and block code ---
+    # --- Stabilne operacje na tagach: insert_before + remove zamiast replace ---
     codeblocks: list[str] = []
+    # snapshot, żeby nie iterować po mutującej się strukturze
     for tag in list(code.filter_tags(recursive=True)):
         tname = str(tag.tag).strip().lower()
 
         # ref already removed on raw, but just in case
         if tname == "ref":
-            code.replace(tag, "", recursive=True)
+            try:
+                code.remove(tag, recursive=True)
+            except Exception:
+                pass
             continue
 
-        # <br> -> newline
+        # <br> -> newline: wstaw przed, usuń tag
         if tname == "br":
-            code.replace(tag, mwparserfromhell.parse("\n"), recursive=True)
+            try:
+                code.insert_before(tag, mwparserfromhell.parse("\n"), recursive=True)
+                code.remove(tag, recursive=True)
+            except Exception:
+                # w ostateczności: zamień na tekstowy newline via string fallback
+                try:
+                    code.replace(str(tag), "\n", recursive=True)
+                except Exception:
+                    pass
             continue
 
-        # inline code: replace with contents
+        # inline code: replace with contents, ale stabilnie
         if tname in INLINE_CODE_TAGS:
-            code.replace(tag, tag.contents if tag.contents is not None else "", recursive=True)
+            contents = tag.contents if tag.contents is not None else ""
+            try:
+                code.insert_before(tag, contents, recursive=True)
+                code.remove(tag, recursive=True)
+            except Exception:
+                # fallback: stringowa zamiana
+                try:
+                    code.replace(str(tag), str(contents), recursive=True)
+                except Exception:
+                    pass
             continue
 
         # block code: store and insert placeholder
@@ -242,11 +263,28 @@ def clean_section_to_text(section_code: mwparserfromhell.wikicode.Wikicode) -> T
             block_raw = unescape_html_spaces(block_raw)
             codeblocks.append(block_raw)
             ph = CODE_PH.format(len(codeblocks) - 1)
-            code.replace(tag, mwparserfromhell.parse(ph), recursive=True)
+            try:
+                code.insert_before(tag, mwparserfromhell.parse(ph), recursive=True)
+                code.remove(tag, recursive=True)
+            except Exception:
+                # fallback
+                try:
+                    code.replace(str(tag), ph, recursive=True)
+                except Exception:
+                    pass
             continue
 
         # other tags: keep only content (do not drop letters!)
-        code.replace(tag, tag.contents if tag.contents is not None else "", recursive=True)
+        contents = tag.contents if tag.contents is not None else ""
+        try:
+            code.insert_before(tag, contents, recursive=True)
+            code.remove(tag, recursive=True)
+        except Exception:
+            # fallback: string replace
+            try:
+                code.replace(str(tag), str(contents), recursive=True)
+            except Exception:
+                pass
 
     # Note: disable collapse to avoid merging spaces; placeholders will protect code blocks
     clean_text = code.strip_code(normalize=True, collapse=False, keep_template_params=False)
@@ -607,27 +645,56 @@ def chunk_and_collect_meta(wikitext: str) -> Tuple[List[Dict[str, Any]], Dict[st
 
     return chunks, article_meta
 
+# --- JSONL processing with resume/checkpoint ---
+def _load_done_ids_if_exists(out_path: str) -> set[int]:
+    done = set()
+    p = Path(out_path)
+    if not p.exists():
+        return done
+    with p.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                if isinstance(obj.get("id"), int):
+                    done.add(obj["id"])
+            except Exception:
+                continue
+    return done
+
 # --- JSONL processing ---
 def process_data(in_path: str, out_path: str, id_max: int | None = None) -> None:
     in_p = Path(in_path)
     out_p = Path(out_path)
-    with in_p.open("r", encoding="utf-8") as fin, out_p.open("w", encoding="utf-8") as fout:
+
+    done_ids = _load_done_ids_if_exists(out_path)
+    mode = "a" if out_p.exists() else "w"
+
+    with in_p.open("r", encoding="utf-8") as fin, out_p.open(mode, encoding="utf-8") as fout:
         for line in fin:
             line = line.strip()
             if not line:
                 continue
             rec = json.loads(line)
-            if id_max is not None and isinstance(rec.get("id"), int) and rec["id"] >= id_max:
-                continue
+            rec_id = rec.get("id")
+            if isinstance(rec_id, int):
+                if rec_id in done_ids:
+                    continue
+                if id_max is not None and rec_id >= id_max:
+                    continue
             text = rec.get("text", "") or ""
             chunks, article_meta = chunk_and_collect_meta(text)
             out = {
                 "id": rec.get("id"),
                 "title": rec.get("title"),
                 "url": rec.get("url"),
-                "category": article_meta.pop("category"),  # according to your key “category”
+                "category": article_meta.pop("category"),
                 "num_chunks": len(chunks),
                 "chunks": chunks,
-                "article_meta": article_meta,  # see_also, notes, bibliography, external_links, references, etc.
+                "article_meta": article_meta,
             }
+            print(rec.get("id"), rec.get("title"))
             fout.write(json.dumps(out, ensure_ascii=False) + "\n")
+            fout.flush()
