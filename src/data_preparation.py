@@ -1,8 +1,12 @@
 import json
 import csv
+import random
 
 from datasets import load_dataset
 from typing import List, Dict
+
+from src.data_chunking_simple import simple_chunk_wikipedia_article
+
 
 def download_wiki_data(dataset_name: str, limit: int = None) -> List[Dict]:
     """
@@ -23,6 +27,7 @@ def download_wiki_data(dataset_name: str, limit: int = None) -> List[Dict]:
 
     return articles
 
+
 def save_wiki_to_json(articles: List[Dict], path: str):
     """
     Saves a list of Wikipedia articles to a JSON.
@@ -42,3 +47,15 @@ def save_wiki_to_csv(articles: List[Dict], path: str):
         writer.writeheader()
         writer.writerows(articles)
     print(f"Saved to CSV: {path}") 
+
+def get_wikipedia_article_count(dataset_name: str) -> int:
+    """
+    Returns the number of articles in the specified Wikipedia dataset.
+    """
+    dataset = load_dataset(dataset_name, split="train")
+    total = len(dataset)
+    print(f"Total number of Wikipedia articles in '{dataset_name}': {total:,}")
+    return total
+
+
+        
