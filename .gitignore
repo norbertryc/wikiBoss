@@ -207,7 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # custom
-.data/
-.temp/
+data/
+temp/
+qdrant_storage/
 .ipynb_checkpoints/
-.qdrant_storage/
+.idea/
