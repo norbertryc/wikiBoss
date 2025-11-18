@@ -1,9 +1,10 @@
 import json
 import csv
-import random
 
+from config import RAW_WIKI_JSON, WIKIPEDIA_PL_DATASET
 from datasets import load_dataset
 from typing import List, Dict
+
 
 from src.data_chunking_simple import simple_chunk_wikipedia_article
 
@@ -56,6 +57,24 @@ def get_wikipedia_article_count(dataset_name: str) -> int:
     total = len(dataset)
     print(f"Total number of Wikipedia articles in '{dataset_name}': {total:,}")
     return total
+
+def load_wiki_from_json(path:str):
+    """
+    Loads Wikipedia articles from a JSON file.
+    """
+    with open(path, 'r', encoding ='utf-8') as f:
+        articles = json.load(f)
+    print(f"Loaded {len(articles):,} articles from JSON: {path}") 
+    return articles 
+
+if __name__ == "__main__":
+    print("Downloading Wikipedia data...")
+    articles = download_wiki_data(WIKIPEDIA_PL_DATASET, limit=3000)
+
+    print("Saving JSON...")
+    save_wiki_to_json(articles, RAW_WIKI_JSON)
+
+    print("DONE.")
 
 
         
