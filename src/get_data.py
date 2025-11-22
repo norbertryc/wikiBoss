@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 def download_wikidump(url: str, filepath: str
                      ) -> None:
-    
+    "Download the official Wikipedia dump from `url` to `filepath` if not already present."
     if os.path.exists(filepath):
         print(f"File {filepath} exists.")
         return
@@ -25,7 +25,11 @@ def download_wikidump(url: str, filepath: str
 
 
 def parse_dump(dump_path: str, output_path: str) -> None:
-
+    """
+    Parse a Wikipedia XML dump and save to a JSONL file with fields: id, title, url, text.
+    The 'text' field preserves the original, unprocessed MediaWiki markup.
+    If the output file already exists, the function skips parsing.
+    """
     if os.path.exists(output_path):
         print(f"File {output_path} exists.")
         return
