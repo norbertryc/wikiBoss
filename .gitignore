@@ -212,3 +212,4 @@ temp/
 qdrant_storage/
 .ipynb_checkpoints/
 .idea/
+logs.txt
