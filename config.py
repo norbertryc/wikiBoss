@@ -21,6 +21,7 @@ DUMP_PATH = RAW_DIR / DUMP_FILE
 DUMP_URL = f"https://dumps.wikimedia.org/plwiki/latest/{DUMP_FILE}"
 PARSED_JSONL = RAW_DIR / "parsed_articles.jsonl"
 CLEANED_JSONL = PROCESSED_DIR / "cleaned_articles.jsonl"
+LOG_FILE = "logs.txt"
 
 # Processing settings
 TOKENS_FOR_CHUNK = 512

@@ -5,12 +5,14 @@ import requests
 import mwxml
 from tqdm import tqdm
 
+from .logging import logger
+
 
 def download_wikidump(url: str, filepath: str
                      ) -> None:
     "Download the official Wikipedia dump from `url` to `filepath` if not already present."
     if os.path.exists(filepath):
-        print(f"File {filepath} exists.")
+        logger.info(f"File {filepath} exists.")
         return
 
     with requests.get(url, stream=True) as r:
@@ -23,6 +25,8 @@ def download_wikidump(url: str, filepath: str
                 f.write(chunk)
                 bar.update(len(chunk))
 
+    logger.info(f"File {filepath} from {url} downloaded.")
+
 
 def parse_dump(dump_path: str, output_path: str) -> None:
     """
@@ -31,7 +35,7 @@ def parse_dump(dump_path: str, output_path: str) -> None:
     If the output file already exists, the function skips parsing.
     """
     if os.path.exists(output_path):
-        print(f"File {output_path} exists.")
+        logger.info(f"File {output_path} exists.")
         return
     
     with bz2.open(dump_path, "rb") as f:
@@ -53,3 +57,5 @@ def parse_dump(dump_path: str, output_path: str) -> None:
                 }
         
                 out.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    logger.info(f"File {output_path} from {dump_path} saved.")

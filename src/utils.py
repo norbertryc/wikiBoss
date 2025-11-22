@@ -4,6 +4,8 @@ from functools import wraps
 from pathlib import Path
 from tqdm import tqdm
 
+from .logging import logger
+
 
 def save_in_batches(batch_size: int = 500):
     """"""
@@ -52,7 +54,7 @@ def track_progress_and_time(desc: str = "Processing"):
                 finally:
                     bar.close()
                     total_time = time.time() - start_time
-                    print(f"{desc} total time: {total_time:.2f} s")
+                    logger.info(f"{desc} total time: {total_time:.2f} s")
 
             return generator()
         return wrapper
