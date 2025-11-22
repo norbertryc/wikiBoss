@@ -59,3 +59,29 @@ def track_progress_and_time(desc: str = "Processing"):
             return generator()
         return wrapper
     return decorator
+
+
+class DataLoader:
+    def __init__(self, input_path: str, output_path: str, clear_output: bool = False):
+        self.input_path = input_path
+        self.output_path = output_path
+        self.articles = []
+
+        if clear_output:
+            output_file = Path(self.output_path)
+            if output_file.exists():
+                output_file.unlink()
+                logger.info(f"File {output_file.name} removed.")
+
+    def load(self, num_lines: int = None):
+        "Load articles from a jsonl file into memory."
+        with open(self.input_path, "r", encoding="utf-8") as file:
+            for i, line in enumerate(file):
+                if num_lines is not None and i >= num_lines:
+                    break
+                try:
+                    record = json.loads(line)
+                    self.articles.append(record)
+                except json.decoder.JSONDecodeError:
+                    continue
+        logger.info(f"Loaded {len(self.articles)} articles from {self.input_path}")
