@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import bz2
 import requests
 import mwxml
@@ -40,15 +41,19 @@ def parse_dump(dump_path: str, output_path: str) -> None:
     
     with bz2.open(dump_path, "rb") as f:
         dump = mwxml.Dump.from_file(f)
+
+        start = time.time()
+        count = 0
     
         with open(output_path, "w", encoding="utf-8") as out:
             for page in tqdm(dump, desc="Parsing to jsonl", unit="pages"):
     
                 revisions = list(page)
                 text = revisions[-1].text
-                if not revisions or not text:
+                if not revisions or not text or text[:10].strip().lower().startswith(
+                        ("#redirect", "redirect", "#patrz", "patrz")):
                     continue
-        
+
                 record = {
                     "id": page.id,
                     "title": page.title,
@@ -57,5 +62,7 @@ def parse_dump(dump_path: str, output_path: str) -> None:
                 }
         
                 out.write(json.dumps(record, ensure_ascii=False) + "\n")
+                count += 1
 
-    logger.info(f"File {output_path} from {dump_path} saved.")
+    logger.info(f"File {output_path} from {dump_path} saved with {count} records"
+                f"in {round((time.time() - start)/60, 2)} minutes.")
