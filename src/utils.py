@@ -7,6 +7,10 @@ from tqdm import tqdm
 from .logging import logger
 
 
+def file_exists(path):
+    """Check if a file exists."""
+    return Path(path).exists()
+
 def save_in_batches(batch_size: int = 500):
     """"""
     def decorator(func):
@@ -62,26 +66,45 @@ def track_progress_and_time(desc: str = "Processing"):
 
 
 class DataLoader:
+    """"""
     def __init__(self, input_path: str, output_path: str, clear_output: bool = False):
         self.input_path = input_path
         self.output_path = output_path
         self.articles = []
 
         if clear_output:
-            output_file = Path(self.output_path)
-            if output_file.exists():
+            output_file = Path(output_path)
+            if file_exists(output_file):
                 output_file.unlink()
                 logger.info(f"File {output_file.name} removed.")
+        else:
+            if file_exists(self.output_path):
+                logger.warning(f"File {self.output_path} already exists. New data will be appended.")
 
-    def load(self, num_lines: int = None):
-        "Load articles from a jsonl file into memory."
+    def load(self, num_lines: int = None, start: int = 0):
+        """Load articles from a jsonl file into memory."""
+        count = 0
+
         with open(self.input_path, "r", encoding="utf-8") as file:
             for i, line in enumerate(file):
-                if num_lines is not None and i >= num_lines:
+                if i < start:
+                    continue
+                if num_lines is not None and count >= num_lines:
                     break
                 try:
                     record = json.loads(line)
                     self.articles.append(record)
+                    count += 1
                 except json.decoder.JSONDecodeError:
                     continue
+
         logger.info(f"Loaded {len(self.articles)} articles from {self.input_path}")
+
+
+def read_jsonl_record(path, line_number):
+    """View the selected record from the jsonl file."""
+    with open(path, "r", encoding="utf-8") as file:
+        for i, line in enumerate(file):
+            if i == line_number:
+                return json.loads(line)
+    raise IndexError(f"The {path} file has fewer than {line_number} lines.")
