@@ -1,4 +1,3 @@
-import os
 import json
 import time
 import bz2
@@ -7,12 +6,13 @@ import mwxml
 from tqdm import tqdm
 
 from .logging import logger
+from .utils import file_exists
 
 
 def download_wikidump(url: str, filepath: str
                      ) -> None:
     "Download the official Wikipedia dump from `url` to `filepath` if not already present."
-    if os.path.exists(filepath):
+    if file_exists(filepath):
         logger.info(f"File {filepath} exists.")
         return
 
@@ -35,7 +35,7 @@ def parse_dump(dump_path: str, output_path: str) -> None:
     The 'text' field preserves the original, unprocessed MediaWiki markup.
     If the output file already exists, the function skips parsing.
     """
-    if os.path.exists(output_path):
+    if file_exists(output_path):
         logger.info(f"File {output_path} exists.")
         return
     
@@ -65,4 +65,4 @@ def parse_dump(dump_path: str, output_path: str) -> None:
                 count += 1
 
     logger.info(f"File {output_path} from {dump_path} saved with {count} records"
-                f"in {round((time.time() - start)/60, 2)} minutes.")
+                f" in {round((time.time() - start)/60, 2)} minutes.")
