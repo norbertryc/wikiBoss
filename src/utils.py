@@ -11,7 +11,7 @@ def file_exists(path):
     """Check if a file exists."""
     return Path(path).exists()
 
-def save_in_batches(batch_size: int = 500):
+def save_in_batches(batch_size: int = 10000):
     """"""
     def decorator(func):
         @wraps(func)
