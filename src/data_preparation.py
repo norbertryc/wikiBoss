@@ -1,7 +1,10 @@
 import json
 import csv
+import os
 
-from config import RAW_WIKI_JSON, WIKIPEDIA_PL_DATASET
+from glob import glob
+
+from config import RAW_WIKI_JSON, WIKIPEDIA_PL_DATASET, DATA_FOLDER
 from datasets import load_dataset
 from typing import List, Dict
 
@@ -58,14 +61,38 @@ def get_wikipedia_article_count(dataset_name: str) -> int:
     print(f"Total number of Wikipedia articles in '{dataset_name}': {total:,}")
     return total
 
-def load_wiki_from_json(path:str):
+def load_wiki_from_json(path: str):
     """
-    Loads Wikipedia articles from a JSON file.
+    Loads Wikipedia articles from the given JSON file.
+    If the file does not exist or is empty, looks for the most recent previous JSON in DATA_FOLDER.
+    Raises FileNotFoundError if no usable JSON is found.
     """
-    with open(path, 'r', encoding ='utf-8') as f:
-        articles = json.load(f)
-    print(f"Loaded {len(articles):,} articles from JSON: {path}") 
-    return articles 
+    # if current file exists and not empty, load it
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            articles = json.load(f)
+        if articles:
+            print(f"Loaded {len(articles):,} articles from {path}")
+            return articles
+        else:
+            print(f"{path} is empty, looking for previous JSON...")
+
+   
+    json_files = sorted(glob(os.path.join(DATA_FOLDER, "raw_wiki_*.json")), reverse=True)
+    for file_path in json_files:
+        if file_path == path:
+            continue #no current file, we take older one
+        with open(file_path, "r", encoding="utf-8") as f:
+            articles = json.load(f)
+        if articles:
+            print(f"Loaded {len(articles):,} articles from {file_path}")
+            return articles
+
+    # jeśli żaden plik nie był do użycia
+    raise FileNotFoundError("No usable JSON files found in DATA_FOLDER.")
+
+
+ 
 
 if __name__ == "__main__":
     print("Downloading Wikipedia data...")
