@@ -96,7 +96,7 @@ def load_wiki_from_json(path: str):
 
 if __name__ == "__main__":
     print("Downloading Wikipedia data...")
-    articles = download_wiki_data(WIKIPEDIA_PL_DATASET, limit=3000)
+    articles = download_wiki_data(WIKIPEDIA_PL_DATASET, limit=10000)
 
     print("Saving JSON...")
     save_wiki_to_json(articles, RAW_WIKI_JSON)

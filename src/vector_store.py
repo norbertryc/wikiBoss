@@ -1,6 +1,7 @@
 from tqdm import tqdm
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
+from src.embedding_prep_bert import PolishBertCasedEmbedder
 
 
 
@@ -62,17 +63,25 @@ class QdrantManager:
         )
         print(f"Re-enabled indexing for '{collection_name}'")
 
-    def generate_embeddings(self, texts, model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"):
-        """
-        Generates sentence embeddings for a list of texts using SentenceTransformer.
-        """
+    # def generate_embeddings(self, texts, model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"):
+    #     """
+    #     Generates sentence embeddings for a list of texts using SentenceTransformer.
+    #     """
     
-        model = SentenceTransformer(model_name)
+    #     model = SentenceTransformer(model_name)
 
-        print(f"Generating embeddings for {len(texts)} texts...")
-        embeddings = model.encode(texts, show_progress_bar=True)
-        print(f"Generated embeddings with shape: {embeddings.shape}")
+    #     print(f"Generating embeddings for {len(texts)} texts...")
+    #     embeddings = model.encode(texts, show_progress_bar=True)
+    #     print(f"Generated embeddings with shape: {embeddings.shape}")
 
+    #     return embeddings
+
+    def generate_embeddings_bert(self, texts, batch_size=16):
+        """
+        Generates embeddings for a list of texts using the Polish BERT cased model cased.
+        """
+        embedder = PolishBertCasedEmbedder()
+        embeddings = embedder.embed_batch(texts, batch_size=batch_size)
         return embeddings
 
     def delete_collection_if_exists(self, collection_name: str):
