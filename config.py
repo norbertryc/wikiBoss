@@ -21,3 +21,6 @@ LOG_FILE = PROJECT_ROOT / "logs.txt"
 # create directories if missing
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 CHUNKED_DIR.mkdir(parents=True, exist_ok=True)
+
+# model
+HUGGING_FACE_MODEL = "dkleczek/bert-base-polish-uncased-v1"
