@@ -21,14 +21,14 @@ def main():
                                   output_path=CHUNKED_DIR / "on_token_chunks.jsonl",
                                   clear_output=True,
                                   strategy="on_tokens")
-    token_count_chunker.load(num_lines=2000)
+    token_count_chunker.load(num_lines=None)
     token_count_chunker.chunk()
 
     md_chunker = Chunker(input_path=CLEANED_JSONL,
                          output_path=CHUNKED_DIR / "md_chunks.jsonl",
                          clear_output=True,
                          strategy="on_md_headers")
-    md_chunker.load(num_lines=2000)
+    md_chunker.load(num_lines=None)
     md_chunker.chunk()
 
 if __name__ == "__main__":
