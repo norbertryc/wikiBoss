@@ -8,3 +8,4 @@ qdrant-client==1.16.0
 sentence-transformers==5.1.2
 tokenizers==0.22.1
 tqdm==4.67.1
+typer==0.20.0

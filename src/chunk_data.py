@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer, AutoConfig
-from langchain_text_splitters import (Tokenizer as TokenCountTokenizer,
+from langchain_text_splitters import (Tokenizer,
                                       split_text_on_tokens,
                                       ExperimentalMarkdownSyntaxTextSplitter)
 
@@ -37,11 +37,12 @@ class Chunker(DataLoader):
         else:
             max_tokens = max_tokens_update
 
-        splitter = TokenCountTokenizer(tokens_per_chunk=max_tokens,
-                                       chunk_overlap=int(self.max_tokens * 0.1),
-                                       decode=lambda ids: self.tokenizer.decode(ids, skip_special_tokens=True),
-                                       encode=lambda text: self.tokenizer.encode(text, add_special_tokens=False)
-                                       )
+        splitter = Tokenizer(tokens_per_chunk=max_tokens,
+                             chunk_overlap=int(self.max_tokens * 0.1),
+                             decode=lambda ids: self.tokenizer.decode(ids, skip_special_tokens=True),
+                             encode=lambda text: self.tokenizer.encode(text, add_special_tokens=False)
+                             )
+
         if isinstance(article, str):
             return split_text_on_tokens(text=article, tokenizer=splitter)
         elif isinstance(article, dict):
