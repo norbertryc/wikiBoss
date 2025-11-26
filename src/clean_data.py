@@ -7,8 +7,8 @@ from .logging import logger
 
 class Cleaner(DataLoader):
     """"""
-    def __init__(self, input_path: str, output_path: str, clear_output: bool = False):
-        super().__init__(input_path, output_path, clear_output)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.stats = {"tables_tree": 0, "tables_raw": 0, "tables_failed": 0}
 
     def _extract_metadata(self, wikicode: mwparserfromhell.wikicode.Wikicode

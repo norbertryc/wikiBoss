@@ -67,9 +67,16 @@ def track_progress_and_time(desc: str = "Processing"):
 
 class DataLoader:
     """"""
-    def __init__(self, input_path: str, output_path: str, clear_output: bool = False):
+    def __init__(self, input_path: str, 
+                 output_path: str, 
+                 clear_output: bool = False,
+                 load_on_init: bool = False,
+                 num_lines: int = None,
+                 start_loading: int = 0
+                 ):
         self.input_path = input_path
         self.output_path = output_path
+        self.clear_output = clear_output
         self.articles = []
 
         if clear_output:
@@ -80,6 +87,9 @@ class DataLoader:
         else:
             if file_exists(self.output_path):
                 logger.warning(f"File {self.output_path} already exists. New data will be appended.")
+
+        if load_on_init:
+            self.load(num_lines=num_lines, start=start_loading)
 
     def load(self, num_lines: int = None, start: int = 0):
         """Load articles from a jsonl file into memory."""

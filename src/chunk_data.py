@@ -16,12 +16,11 @@ class Chunker(DataLoader):
     """"""
 
     def __init__(self,
-                 input_path: str,
-                 output_path: str,
-                 clear_output: bool = False,
+                 *args,
                  strategy: str = None,
-                 tokenizer: AutoTokenizer = BASE_TOKENIZER):
-        super().__init__(input_path, output_path, clear_output)
+                 tokenizer: AutoTokenizer = BASE_TOKENIZER,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
         self.strategy = strategy
         self.tokenizer = tokenizer
         self.max_tokens = MAX_TOKENS
