@@ -15,7 +15,9 @@ class PolishBertCasedEmbedder:
         self.model = self.model.to(self.device)
         self.model.eval()
 
-    def embed_batch(self, texts, batch_size=16):
+    def embed_batch(self, texts, batch_size=100):
+        
+        texts = sorted(texts, key=len)
         all_embeddings = []
 
         for i in tqdm(range(0, len(texts), batch_size), desc="Embedding BERT (CASED)"):
