@@ -2,7 +2,7 @@ import re
 import mwparserfromhell
 
 from .utils import save_in_batches, track_progress_and_time, DataLoader
-from .logging import logger
+from .logging_config import logger
 
 
 class Cleaner(DataLoader):

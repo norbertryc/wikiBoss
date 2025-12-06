@@ -4,12 +4,15 @@ from functools import wraps
 from pathlib import Path
 from tqdm import tqdm
 
-from .logging import logger
+from .logging_config import logger
 
 
 def file_exists(path):
     """Check if a file exists."""
-    return Path(path).exists()
+    if path:
+        return Path(path).exists()
+    else:
+        return None
 
 def save_in_batches(batch_size: int = 10000):
     """"""
@@ -68,7 +71,7 @@ def track_progress_and_time(desc: str = "Processing"):
 class DataLoader:
     """"""
     def __init__(self, input_path: str, 
-                 output_path: str, 
+                 output_path: str = None,
                  clear_output: bool = False,
                  load_on_init: bool = False,
                  num_lines: int = None,

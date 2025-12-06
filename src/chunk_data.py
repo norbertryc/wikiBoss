@@ -4,7 +4,7 @@ from langchain_text_splitters import (Tokenizer,
                                       ExperimentalMarkdownSyntaxTextSplitter)
 
 from .utils import save_in_batches, track_progress_and_time, DataLoader
-from .logging import logger
+from .logging_config import logger
 from config import HUGGING_FACE_MODEL
 
 BASE_TOKENIZER = AutoTokenizer.from_pretrained(HUGGING_FACE_MODEL, use_fast=True)
@@ -58,11 +58,12 @@ class Chunker(DataLoader):
             heading = ""
 
             for k, v in doc.metadata.items():
-                heading += f"{int(k[-1])*'#'} {v}\n"
+                heading += f"{int(k[-1])*'#'} {v}\n".lower()
 
             heading_tokens = len(self.tokenizer.encode(heading, add_special_tokens=False))
+            max_tokens_update = self.max_tokens - heading_tokens
             doc_split_by_tokens = self.split_simple_on_tokens(doc.page_content,
-                                                              max_tokens_update=self.max_tokens - heading_tokens)
+                                                              max_tokens_update=max_tokens_update)
             for chunk in doc_split_by_tokens:
                 chunks.append(
                     {
@@ -72,7 +73,7 @@ class Chunker(DataLoader):
                 )
         return chunks
 
-    @save_in_batches(batch_size=10000)
+    @save_in_batches(batch_size=20000)
     @track_progress_and_time("Chunking")
     def chunk(self):
 
@@ -92,5 +93,5 @@ class Chunker(DataLoader):
                 logger.error(f"The article no {i} (wiki id {article["id"]}): {article["title"]} skipped"
                              f" because of exception:\n'{e}'")
 
-        logger.info(f"Chunked {count} articles with strategy {self.strategy}."
+        logger.info(f"Chunked {count} articles with strategy '{self.strategy}'."
                     f" Saved chunks to {self.output_path}")

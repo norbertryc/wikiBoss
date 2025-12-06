@@ -5,7 +5,7 @@ import requests
 import mwxml
 from tqdm import tqdm
 
-from .logging import logger
+from .logging_config import logger
 from .utils import file_exists
 
 
