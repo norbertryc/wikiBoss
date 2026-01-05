@@ -1,4 +1,5 @@
 from tqdm import tqdm
+import numpy as np
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 from src.embedding_prep_bert import PolishBertCasedEmbedder
@@ -75,6 +76,26 @@ class QdrantManager:
     #     print(f"Generated embeddings with shape: {embeddings.shape}")
 
     #     return embeddings
+
+    def generate_embeddings(self, texts, model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", batch_size: int = 128):
+        """
+        Generates embeddings for a list of texts using SentenceTransformer in batches. NEW VERSION
+        """
+        model = SentenceTransformer(model_name)
+        embeddings_all = []
+
+        print(f"Generating embeddings for {len(texts)} texts in batches of {batch_size}...")
+
+        for i in tqdm(range(0, len(texts), batch_size), desc="Embedding batches"):
+            batch_texts = texts[i:i+batch_size]
+            batch_embeddings = model.encode(batch_texts, show_progress_bar=False)
+            embeddings_all.extend(batch_embeddings)
+
+        embeddings_all = np.array(embeddings_all)
+        print(f"Generated embeddings with shape: {embeddings_all.shape}")
+
+        return embeddings_all
+
 
     def generate_embeddings_bert(self, texts, batch_size=16):
         """
