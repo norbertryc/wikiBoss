@@ -1,5 +1,6 @@
 import json
 import time
+import re
 import bz2
 import requests
 import mwxml
@@ -11,7 +12,7 @@ from .utils import file_exists
 
 def download_wikidump(url: str, filepath: str
                      ) -> None:
-    "Download the official Wikipedia dump from `url` to `filepath` if not already present."
+    """Download the official Wikipedia dump from `url` to `filepath` if not already present."""
     if file_exists(filepath):
         logger.info(f"File {filepath} exists.")
         return
@@ -32,8 +33,9 @@ def download_wikidump(url: str, filepath: str
 def parse_dump(dump_path: str, output_path: str) -> None:
     """
     Parse a Wikipedia XML dump and save to a JSONL file with fields: id, title, url, text.
+    Invalid articles and redirects are filtered out.
     The 'text' field preserves the original, unprocessed MediaWiki markup.
-    If the output file already exists, the function skips parsing.
+    If the output file already exists, parsing is skipped.
     """
     if file_exists(output_path):
         logger.info(f"File {output_path} exists.")
@@ -47,20 +49,31 @@ def parse_dump(dump_path: str, output_path: str) -> None:
     
         with open(output_path, "w", encoding="utf-8") as out:
             for page in tqdm(dump, desc="Parsing to jsonl", unit="pages"):
+
+                if page.redirect is not None or page.namespace != 0:
+                    continue
     
                 revisions = list(page)
-                text = revisions[-1].text
-                if not revisions or not text or text[:10].strip().lower().startswith(
-                        ("#redirect", "redirect", "#patrz", "patrz")):
+                if not revisions:
+                    continue
+
+                raw_text = revisions[-1].text
+                if raw_text is None:
+                    continue
+
+                text = raw_text.strip()
+                is_redirect_double_check = bool(re.match(r"^\s*#?\s*(redirect|przekieruj|patrz|tam)",
+                                                         text, re.IGNORECASE))
+                if not text or is_redirect_double_check:
                     continue
 
                 record = {
                     "id": page.id,
                     "title": page.title,
                     "url": f"https://pl.wikipedia.org/wiki/{page.title.replace(' ', '_')}",
-                    "text": text.strip(),
+                    "text": text
                 }
-        
+
                 out.write(json.dumps(record, ensure_ascii=False) + "\n")
                 count += 1
 
