@@ -6,7 +6,7 @@ from datasets import load_dataset
 
 
 # =========================================================
-# DOWNLOAD + STREAMING (BEZ RAM)
+# DOWNLOAD + STREAMING WIKIPEDIA DATA
 # =========================================================
 
 def download_wiki_data(dataset_name: str, limit: int | None = None):

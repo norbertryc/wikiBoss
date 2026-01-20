@@ -29,7 +29,6 @@ if __name__ == "__main__":
     texts = [p["text"] for p in payloads]
 
     embeddings = manager.generate_embeddings(texts, batch_size=512)
-    # embeddings = manager.generate_embeddings_bert(texts, batch_size=16)
 
     manager.upload_bulk_vectors("wiki_chunks", vectors=embeddings, payloads=payloads)
 

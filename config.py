@@ -19,3 +19,5 @@ COLLECTION_NAME = "wiki_chunks"
 
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 TOP_K = 3
+
+
