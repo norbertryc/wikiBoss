@@ -31,6 +31,15 @@ class Retriever:
             score_threshold=0.65
         )
         return results
+    
+    def get_chunks_by_title(self, title: str):
+        """Return all document chunks for a given article title"""
+        all_docs, _ = self.client.scroll(
+            collection_name=COLLECTION_NAME,
+            with_payload=True,
+            limit=50000
+        )
+        return [doc for doc in all_docs if doc.payload.get("title") == title]
 
     def get_relevant_documents(self, query: str, top_k=None):
         """Return documents in format expected by LLM"""
