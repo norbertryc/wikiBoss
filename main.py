@@ -28,7 +28,8 @@ if __name__ == "__main__":
     payloads = [{"text": chunk["chunk_text"], "title": chunk["title"]} for chunk in simple_chunking]
     texts = [p["text"] for p in payloads]
 
-    embeddings = manager.generate_embeddings(texts, batch_size=512)
+    model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embeddings = manager.generate_embeddings(texts, model_name, batch_size=512)
 
     manager.upload_bulk_vectors("wiki_chunks", vectors=embeddings, payloads=payloads)
 

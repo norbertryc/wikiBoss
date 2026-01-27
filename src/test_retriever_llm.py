@@ -122,7 +122,7 @@ for query in llm_questions:
 
 # data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 # os.makedirs(data_dir, exist_ok=True)
-# output_path = os.path.join(data_dir, "all_titles.json")
+# output_path_all_titles = ARTIFACTS_DIR / "all_titles.json"
 
 # all_docs, _ = retriever.client.scroll(
 #     collection_name=COLLECTION_NAME,
@@ -131,7 +131,7 @@ for query in llm_questions:
 
 # all_titles = [doc.payload.get("title") for doc in all_docs]
 
-# with open(output_path, "w", encoding="utf-8") as f:
+# with open(output_path_all_titles, "w", encoding="utf-8") as f:
 #     json.dump(all_titles, f, ensure_ascii=False, indent=2)
 
 #     print(f"\nAll titles saved to {output_path}\n")

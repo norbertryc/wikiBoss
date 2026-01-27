@@ -63,7 +63,7 @@ class QdrantManager:
         print(f"Re-enabled indexing for '{collection_name}'")
 
 
-    def generate_embeddings(self, texts, model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", batch_size: int = 128):
+    def generate_embeddings(self, texts, model_name: str, batch_size: int = 128):
         """
         Generates embeddings for a list of texts using SentenceTransformer in batches.
         """
