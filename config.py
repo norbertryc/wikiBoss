@@ -6,10 +6,9 @@ from datetime import datetime
 WIKIPEDIA_PL_DATASET = "chrisociepa/wikipedia-pl-20230401"
 
 DATA_FOLDER = "data"
-TODAY = datetime.now().strftime("%Y%m%d")
 
-RAW_WIKI_JSON = f"{DATA_FOLDER}/raw_wiki_{TODAY}.json"
-RAW_WIKI_JSONL = f"{DATA_FOLDER}/raw_wiki_pl.jsonl"
+RAW_WIKI_JSON = f"{DATA_FOLDER}/raw_wiki_pl_JSON_format.json"
+RAW_WIKI_JSONL = f"{DATA_FOLDER}/raw_wiki_pl_JSONL_format.jsonl"
 
 # =========================
 # RETRIEVER / VECTOR STORE
