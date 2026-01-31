@@ -1,19 +1,48 @@
 import re
+import regex
 import mwparserfromhell
 
-from .utils import save_in_batches, track_progress_and_time, DataLoader
+from .utils import save_in_batches, track_progress_and_time, DataLoader, count_jsonl_records
 from .logging_config import logger
 
 
 class Cleaner(DataLoader):
-    """"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """
+    Processor for cleaning MediaWiki articles.
+
+    Args:
+        input_path (str): Path to input JSONL file with raw articles (required)
+        output_path (str): Path to output JSONL file for cleaned articles (required)
+        *args, **kwargs: Passed to DataLoader parent class
+
+    Attributes:
+        stats (dict): Counters for table processing metrics (tree vs raw vs failed)
+    """
+    def __init__(self,
+                 *args,
+                 input_path: str = None,
+                 output_path: str = None,
+                 **kwargs):
+
+        if input_path is None:
+            raise ValueError("Cleaner requires 'input_path' to be specified")
+        if output_path is None:
+            raise ValueError("Cleaner requires 'output_path' to be specified")
+
+        super().__init__(*args, input_path=input_path, output_path=output_path, **kwargs)
         self.stats = {"tables_tree": 0, "tables_raw": 0, "tables_failed": 0}
 
     def _extract_metadata(self, wikicode: mwparserfromhell.wikicode.Wikicode
                           ) -> dict:
-        """"""
+        """
+        Extract metadata from parsed wikicode.
+
+        Args:
+            wikicode: Parsed MediaWiki object.
+
+        Returns:
+            dict: Dictionary containing extracted metadata (e.g., categories).
+        """
         metadata = {}
 
         # categories
@@ -30,7 +59,15 @@ class Cleaner(DataLoader):
 
     def _remove_trash_sections(self, wikicode: mwparserfromhell.wikicode.Wikicode
                                 ) -> mwparserfromhell.wikicode.Wikicode:
-        """Remove trash nodes and wikilinks."""
+        """
+        Remove unwanted sections and specific media links.
+
+        Args:
+            wikicode: Parsed MediaWiki object.
+
+        Returns:
+            mwparserfromhell.wikicode.Wikicode: Modified object with trash sections removed.
+        """
         trash_headers = ["Przypisy", "Zobacz też", "Linki zewnętrzne", "Kategoria", "Bibliografia", "Uwagi"]
         nodes = wikicode.nodes
         to_remove = set()
@@ -59,7 +96,15 @@ class Cleaner(DataLoader):
 
     def _convert_headings_to_markdown(self, wikicode: mwparserfromhell.wikicode.Wikicode
                                       ) -> mwparserfromhell.wikicode.Wikicode:
-        """Convert wikimedia headings style to markdown"""
+        """
+        Convert MediaWiki headings to Markdown syntax.
+
+        Args:
+            wikicode: Parsed MediaWiki object.
+
+        Returns:
+            mwparserfromhell.wikicode.Wikicode: Object with replaced heading nodes.
+        """
         new_nodes = []
 
         for node in wikicode.nodes:
@@ -77,9 +122,16 @@ class Cleaner(DataLoader):
     def _convert_math_nodes_to_latex(self, wikicode: mwparserfromhell.wikicode.Wikicode
                             ) -> mwparserfromhell.wikicode.Wikicode:
         """
-        Convert 'math' tags to save their content (mwparserfromhell's strip_code() method removes
-        'math' tags with content by default)
+        Convert <math> tags to LaTeX blocks to prevent stripping (mwparserfromhell's methods removes them
+        with content by default).
+
+        Args:
+            wikicode: Parsed MediaWiki object.
+
+        Returns:
+            mwparserfromhell.wikicode.Wikicode: Object with text nodes containing LaTeX blocks.
         """
+
         new_nodes = []
 
         for node in wikicode.nodes:
@@ -95,7 +147,17 @@ class Cleaner(DataLoader):
 
     def _convert_special_templates(self, wikicode: mwparserfromhell.wikicode.Wikicode
                                    ) -> mwparserfromhell.wikicode.Wikicode:
-        """"""
+        """
+        Replace specific templates with their textual content equivalents. The handlers dict was created
+        and can be extended based on empirical observations. Without this, the mwparserfromhell library
+        simply removes these templates along with their content.
+
+        Args:
+            wikicode: Parsed MediaWiki object.
+
+        Returns:
+            mwparserfromhell.wikicode.Wikicode: Object with processed templates.
+        """
         def get_arg(template, n):
             if not template.has(n):
                 return ""
@@ -122,7 +184,15 @@ class Cleaner(DataLoader):
 
     def _convert_tables_to_md(self, wikicode: mwparserfromhell.wikicode.Wikicode
                               ) -> mwparserfromhell.wikicode.Wikicode:
-        """Convert mediawiki tables to markdown."""
+        """
+        Handle various table formats (standard Wiki nodes or raw nested wikitext) and convert them to Markdown.
+
+        Args:
+            wikicode: Parsed MediaWiki object.
+
+        Returns:
+            mwparserfromhell.wikicode.Wikicode: Object with tables replaced by Markdown strings.
+        """
         table_pattern = re.compile(r'\{\|(.*?)\|\}', re.DOTALL)
 
         for node in wikicode.filter_tags(matches=lambda n: n.tag == "table", recursive=False):
@@ -172,7 +242,15 @@ class Cleaner(DataLoader):
         return wikicode
 
     def _parse_table_tag_to_md(self, table_node: mwparserfromhell.nodes.tag.Tag) -> str:
-        """Convert a mwparserfromhell Tag object (table) to markdown using Tree structure."""
+        """Convert a mwparserfromhell Tag object (table) to markdown using Tree structure."""        """
+        Parse a Tag object representing a table into a Markdown string.
+
+        Args:
+            table_node: The MediaWiki tag node for the table.
+
+        Returns:
+            str: The generated Markdown table.
+        """
         rows = []
 
         tr_nodes = table_node.contents.filter_tags(matches=lambda n: n.tag == "tr", recursive=False)
@@ -201,7 +279,15 @@ class Cleaner(DataLoader):
         return self._build_md_table_from_rows(rows)
 
     def _parse_raw_wikitable_to_md(self, raw_table_text: str) -> str:
-        """Convert raw text tables to markdown."""
+        """
+        Parse raw Wikitext table syntax into a Markdown string.
+
+        Args:
+            raw_table_text: The raw string content of the table.
+
+        Returns:
+            str: The generated Markdown table.
+        """
         lines = raw_table_text.strip().split('\n')
         if len(lines) < 2:
             return ""
@@ -254,7 +340,15 @@ class Cleaner(DataLoader):
         return self._build_md_table_from_rows(rows)
 
     def _clean_raw_table_cell(self, text: str) -> str:
-        """Clean raw cell text."""
+        """
+        Sanitize table cell content.
+
+        Args:
+            text: Raw cell content.
+
+        Returns:
+            str: Cleaned text with styles removed and pipes escaped.
+        """
         # clean wikilinks
         text = re.sub(r'\[\[(?:[^|\]]*\|)?([^\]]+)\]\]', r'\1', text)
         # remove style attributes
@@ -267,7 +361,15 @@ class Cleaner(DataLoader):
         return text.strip()
 
     def _build_md_table_from_rows(self, rows: list) -> str:
-        """Build markdown table string from parsed rows."""
+        """
+        Construct a Markdown table string from parsed data.
+
+        Args:
+            rows: List of tuples (cell_content_list, is_header_bool).
+
+        Returns:
+            str: Formatted Markdown table.
+        """
         if not rows:
             return ""
 
@@ -275,27 +377,27 @@ class Cleaner(DataLoader):
         data_rows = []
 
         for cells, is_header in rows:
-            if header_row is None and (is_header or not header_row):
+            if is_header and header_row is None:
                 header_row = cells
             else:
                 data_rows.append(cells)
 
-        if header_row is None:
-            # take first row as header if no header
-            if data_rows:
-                header_row = data_rows.pop(0)
-            else:
-                return ""
+        if header_row is None and not data_rows:
+            return ""
 
-        num_cols = len(header_row)
-        for row in data_rows:
-            if len(row) > num_cols:
-                num_cols = len(row)
+        all_rows = ([header_row] if header_row else []) + data_rows
+        num_cols = max(len(r) for r in all_rows) if all_rows else 0
+
+        if header_row is None:
+            header_row = [""] * num_cols
 
         def normalize(r):
-            return "| " + " | ".join(r + [""] * (num_cols - len(r))) + " |"
+            row_content = r + [""] * (num_cols - len(r))
+            safe_content = [str(c).replace("|", "&#124;") for c in row_content]
+            return "| " + " | ".join(safe_content) + " |"
 
         md_lines = []
+
         md_lines.append(normalize(header_row))
         md_lines.append("|" + "|".join(["---"] * num_cols) + "|")
         for row in data_rows:
@@ -303,15 +405,91 @@ class Cleaner(DataLoader):
 
         return "\n".join(md_lines) + "\n\n"
 
-    def _strip_whitespace(self, text: str) -> str:
-        """"""
+    def _correct_remaining_errors(self, text: str) -> str:
+        """
+        Fix artifacts missed by previous transformations and correct potential processing errors
+        (based on observations).
+
+        Args:
+            text: The text stripped of Wikicode.
+
+        Returns:
+            str: Cleaned text without residual refs or empty lines.
+        """
+        text = re.sub(r"<ref.*?>.*?</ref>", "", text, flags=re.DOTALL)
+        text = regex.sub(r"\[\[Plik:(?:[^\[\]]|(\[(?:[^\[\]]|(?1))*\]))*\]\]", "", text, flags=re.DOTALL)
+
         lines = [line.strip() for line in text.split("\n")]
         return "\n".join(line for line in lines if line)
 
-    @save_in_batches()
+    def _final_check(self, article: dict) -> bool:
+        """
+        Verify the cleaned text to ensure no empty or low-quality 'trash' records remain, especially 'hidden' redirects
+        and disambiguations not detected by the mwxml library (based on observations).
+
+        Example to be filtered out:
+        Title: The Very Best of Eagles
+        Length: 92
+        Text:'The Very Best of Eagles (1994)\nThe Very Best of Eagles (2001)\nThe Very Best of Eagles (2003)'
+
+        Args:
+            article: Dictionary containing article data.
+
+        Returns:
+            bool: True if the article is valid, False if it should be discarded.
+        """
+        text = article["text"]
+        title_lower = article["title"].lower()
+        text_len = len(text)
+
+        excluded_titles = ["skarbnica wikipedii", "poczekalnia", "(ujednoznacznienie)"]
+        if any(phrase in title_lower for phrase in excluded_titles):
+            return False
+
+        if text_len <= len(article["title"]) or text_len < 25:
+            return False
+
+        if text_len < 300:
+            lines = text.split('\n')
+            num_lines = len(lines)
+
+            if "##" in text:
+                return False
+
+            if num_lines == 1:
+                if lines[0].lower().startswith(("zobacz też", "osoby:", "uwaga:")):
+                    return False
+                return True
+
+            avg_line_len = text_len / num_lines
+            if avg_line_len < 60:
+                return False
+
+            disambig_triggers = [
+                "osoby o tym nazwisku",
+                "osoby:",
+                "zobacz też",
+                "inne znaczenia",
+                "miejscowości w",
+                "strona ujednoznaczniająca",
+            ]
+
+            if any(trigger in lines[0].lower() for trigger in disambig_triggers):
+                return False
+        return True
+
+    @save_in_batches(20000)
     @track_progress_and_time("Cleaning")
     def clean(self):
-        """"""
+        """
+        Execute the full cleaning pipeline for all articles.
+
+        Yields:
+            dict | None: Processed article dictionary or None if processing failed/skipped.
+        """
+        logger.info("Start cleaning...")
+        count = 0
+
         for i, article in enumerate(self.articles):
             try:
                 wikicode = mwparserfromhell.parse(article["text"])
@@ -324,12 +502,22 @@ class Cleaner(DataLoader):
                 wikicode = self._convert_tables_to_md(wikicode)
 
                 text = wikicode.strip_code(collapse=True)
-                text = self._strip_whitespace(text)
+                text = self._correct_remaining_errors(text)
 
                 article["text"] = text
 
-                yield article
+                if self._final_check(article):
+                    count += 0
+                    yield article
+                else:
+                    logger.info(f"Invalid article no {i} (wiki id {article["id"]}): {article["title"]} skipped.")
+                    yield None
 
             except Exception as e:
                 logger.error(f"The article no {i} (wiki id {article["id"]}): {article["title"]} skipped"
                              f" because of exception:\n'{e}'")
+                yield None
+
+        logger.info(self.stats)
+        logger.info(f"Saved {count} clean articles to {self.output_path} "
+                    f"(total records: {count_jsonl_records(self.output_path)}).")

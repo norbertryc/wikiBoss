@@ -1,81 +1,162 @@
-from transformers import AutoTokenizer, AutoConfig
 from langchain_text_splitters import (Tokenizer,
                                       split_text_on_tokens,
                                       ExperimentalMarkdownSyntaxTextSplitter)
 
-from .utils import save_in_batches, track_progress_and_time, DataLoader
+from .utils import save_in_batches, track_progress_and_time, DataLoader, count_jsonl_records
 from .logging_config import logger
-from config import HUGGING_FACE_MODEL
-
-BASE_TOKENIZER = AutoTokenizer.from_pretrained(HUGGING_FACE_MODEL, use_fast=True)
-BASE_TOKENIZER_CONFIG = AutoConfig.from_pretrained(HUGGING_FACE_MODEL)
-MAX_TOKENS = BASE_TOKENIZER_CONFIG.max_position_embeddings
+from .embedding_engine import EmbeddingEngine
 
 
 class Chunker(DataLoader):
-    """"""
+    """
+    Splits Wikipedia articles into embedding-ready chunks using specified strategy.
+
+    Args:
+        embedding_engine (EmbeddingEngine): Engine providing tokenizer and model config
+        strategy (str): Chunking strategy - 'on_tokens' or 'on_md_headers'
+        input_path (str): Path to input JSONL file with raw articles (required)
+        output_path (str): Path to output JSONL file for cleaned articles (required)
+        *args, **kwargs: Passed to DataLoader parent class
+
+    Attributes:
+        strategy (str): Active chunking strategy
+        engine (EmbeddingEngine): Embedding engine instance
+        max_tokens (int): Maximum tokens per chunk from embedding model
+        chunk_prefix (str): Model-specific prefix (e.g., "passage: " for E5)
+        splitters_by_strategy (dict): Maps strategy names to splitter methods
+    """
 
     def __init__(self,
                  *args,
+                 input_path: str = None,
+                 output_path: str = None,
+                 embedding_engine: EmbeddingEngine,
                  strategy: str = None,
-                 tokenizer: AutoTokenizer = BASE_TOKENIZER,
                  **kwargs):
-        super().__init__(*args, **kwargs)
+
+        if input_path is None:
+            raise ValueError("Chunker requires 'input_path' to be specified")
+        if output_path is None:
+            raise ValueError("Chunker requires 'output_path' to be specified")
+
+        super().__init__(*args, input_path=input_path, output_path=output_path, **kwargs)
         self.strategy = strategy
-        self.tokenizer = tokenizer
-        self.max_tokens = MAX_TOKENS
+        self.engine = embedding_engine
+        self.max_tokens = embedding_engine.embedding_size
+
         self.splitters_by_strategy = {
-            "on_tokens": self.split_simple_on_tokens,
+            "on_tokens": self.split_on_tokens_strategy,
             "on_md_headers": self.split_on_md_headers
         }
 
-    def split_simple_on_tokens(self, article: str|dict, max_tokens_update: int = None
-                               ) -> list:
-        """"""
-        if max_tokens_update is None:
-            max_tokens = self.max_tokens
-        else:
-            max_tokens = max_tokens_update
+        self.chunk_prefix = ("passage: "
+                             if embedding_engine.model_name == "intfloat/multilingual-e5-base"
+                             else "")
 
-        splitter = Tokenizer(tokens_per_chunk=max_tokens,
-                             chunk_overlap=int(self.max_tokens * 0.1),
-                             decode=lambda ids: self.tokenizer.decode(ids, skip_special_tokens=True),
-                             encode=lambda text: self.tokenizer.encode(text, add_special_tokens=False)
-                             )
+    def _tokenize_and_split(self, text: str, content_budget: int, overlap_ratio: float = 0.2) -> list[str]:
+        """
+        Splits text into token-based chunks with overlap.
 
-        if isinstance(article, str):
-            return split_text_on_tokens(text=article, tokenizer=splitter)
-        elif isinstance(article, dict):
-            return split_text_on_tokens(text=article["text"], tokenizer=splitter)
+        Args:
+            text (str): Text content to split
+            content_budget (int): Maximum tokens per chunk
+            overlap_ratio (float): Ratio of overlap between consecutive chunks (default: 0.2)
 
-    def split_on_md_headers(self, article: dict) -> list:
-        """"""
+        Returns:
+            list[str]: List of text chunks without formatting
+        """
+        token_count = self.engine.get_token_count(text)
+
+        if token_count <= content_budget:
+            return [text]
+
+        # calculate overlap
+        calculated_overlap = int(content_budget * overlap_ratio)
+        final_overlap = 0 if calculated_overlap >= content_budget else calculated_overlap
+
+        splitter = Tokenizer(
+            tokens_per_chunk=content_budget,
+            chunk_overlap=final_overlap,
+            decode=lambda ids: self.engine.tokenizer.decode(ids, skip_special_tokens=True),
+            encode=lambda text: self.engine.tokenizer.encode(text, add_special_tokens=False)
+        )
+
+        return split_text_on_tokens(text=text, tokenizer=splitter)
+
+    def split_on_tokens_strategy(self, article: dict) -> list[dict]:
+        """
+        Splits article into token-based chunks with title header and prefix.
+        Each chunk includes: prefix + "# title\n" + content.
+
+        Args:
+            article (dict): Article with 'title' and 'text' keys
+
+        Returns:
+            list[dict]: Chunks with 'text' (formatted) and 'metadata' keys
+        """
+        title_header = f"# {article['title']}\n"
+        prefix_and_title = self.chunk_prefix + title_header
+
+        # reserve tokens for prefix and title
+        prefix_title_tokens = self.engine.get_token_count(prefix_and_title)
+        content_budget = self.max_tokens - prefix_title_tokens
+
+        text_chunks = self._tokenize_and_split(article["text"], content_budget, overlap_ratio=0.2)
+
+        return [
+            {
+                "text": prefix_and_title + chunk,
+                "metadata": {"Header 1": article["title"]}
+            }
+            for chunk in text_chunks
+        ]
+
+    def split_on_md_headers(self, article: dict) -> list[dict]:
+        """
+        Splits article by markdown headers, then by tokens within each section.
+        Each chunk includes: prefix + full header hierarchy + content.
+
+        Args:
+            article (dict): Article with 'title' and 'text' keys
+
+        Returns:
+            list[dict]: Chunks with 'text' (formatted) and 'metadata' (header hierarchy) keys
+        """
         splitter = ExperimentalMarkdownSyntaxTextSplitter()
         docs = splitter.split_text(f"# {article['title']}\n" + article["text"])
         chunks = []
 
         for doc in docs:
-            heading = ""
+            # reconstruct header hierarchy from metadata
+            heading = "".join(f"{int(k[-1]) * '#'} {v}\n" for k, v in doc.metadata.items())
 
-            for k, v in doc.metadata.items():
-                heading += f"{int(k[-1])*'#'} {v}\n".lower()
+            # reserve tokens for prefix and heading
+            heading_tokens = self.engine.get_token_count(self.chunk_prefix + heading)
+            content_budget = self.max_tokens - heading_tokens
 
-            heading_tokens = len(self.tokenizer.encode(heading, add_special_tokens=False))
-            max_tokens_update = self.max_tokens - heading_tokens
-            doc_split_by_tokens = self.split_simple_on_tokens(doc.page_content,
-                                                              max_tokens_update=max_tokens_update)
-            for chunk in doc_split_by_tokens:
-                chunks.append(
-                    {
-                        "text": heading + chunk,
+            # split section content by tokens
+            text_chunks = self._tokenize_and_split(doc.page_content, content_budget, overlap_ratio=0.1)
+
+            for chunk in text_chunks:
+                if chunk.strip():
+                    chunks.append({
+                        "text": self.chunk_prefix + heading + chunk,
                         "metadata": doc.metadata,
-                    }
-                )
+                    })
+
         return chunks
 
     @save_in_batches(batch_size=20000)
     @track_progress_and_time("Chunking")
     def chunk(self):
+        """
+        Main chunking pipeline. Processes articles using configured strategy.
+        Yields articles with 'chunks' field, original 'text' removed.
+
+        Yields:
+            dict: Processed article with chunks or None if error occurred
+        """
+        logger.info("Start chunking...")
 
         count = 0
 
@@ -92,6 +173,7 @@ class Chunker(DataLoader):
             except Exception as e:
                 logger.error(f"The article no {i} (wiki id {article["id"]}): {article["title"]} skipped"
                              f" because of exception:\n'{e}'")
+                yield None
 
         logger.info(f"Chunked {count} articles with strategy '{self.strategy}'."
-                    f" Saved chunks to {self.output_path}")
+                    f" Saved chunks to {self.output_path} (total records: {count_jsonl_records(self.output_path)}).")

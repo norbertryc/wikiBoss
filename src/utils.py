@@ -93,9 +93,11 @@ class DataLoader:
     Loads JSONL records (articles) from disk into memory.
 
     Args:
-        input_path (str): Path to the input JSONL file.
+        input_path (str, optional): Path to the input JSONL file. Set to None only for existing
+                        vector store's operations by QdrantManager class.
         output_path (str, optional): Path for downstream output file (e.g. cleaned JSONL).
                         If file exists, new data is appended unless clear_output is True.
+                        Set to None only for QdrantManager class.
         clear_output (bool): If True, deletes existing output_path before processing. Defaults to False.
         load_on_init (bool): If True, automatically calls load() on initialization. Defaults to False.
         num_lines (int, optional): Max records to load if load_on_init is True.
@@ -106,10 +108,10 @@ class DataLoader:
     """
     def __init__(
             self,
-            input_path: str,
+            input_path: str = None,
             output_path: str = None,
             clear_output: bool = False,
-            load_on_init: bool = False,
+            load_on_init: bool = True,
             num_lines: int = None,
             start_loading: int = 0
     ):
@@ -125,7 +127,7 @@ class DataLoader:
         elif file_exists(self.output_path):
             logger.warning(f"File {self.output_path} already exists. New data will be appended.")
 
-        if load_on_init:
+        if load_on_init and input_path:
             self.load(num_lines=num_lines, start=start_loading)
 
     def load(self, num_lines: int = None, start: int = 0):
@@ -136,6 +138,42 @@ class DataLoader:
             num_lines (int, optional): Max number of records to load. If None, reads entire file.
             start (int): Number of lines to skip from the beginning of file. Defaults to 0.
         """
+        total_records = count_jsonl_records(self.input_path)
+
+        # validate start parameter
+        if start >= total_records:
+            if num_lines is not None:
+                # Load last num_lines records instead
+                new_start = max(0, total_records - num_lines)
+                logger.warning(
+                    f"Start position ({start}) >= total records ({total_records}). "
+                    f"Loading last {min(num_lines, total_records)} records instead (from position {new_start})."
+                )
+                start = new_start
+            else:
+                logger.error(f"Start position ({start}) >= total records ({total_records}). Nothing to load.")
+                return
+
+        if start < 0:
+            logger.warning(f"Start position ({start}) is negative. Setting to 0.")
+            start = 0
+
+        # validate num_lines parameter
+        max_available = total_records - start
+
+        if num_lines is not None:
+            if num_lines <= 0:
+                logger.error(f"num_lines ({num_lines}) must be positive. Nothing to load.")
+                return
+
+            if num_lines > max_available:
+                logger.warning(
+                    f"Requested {num_lines} records from position {start}, "
+                    f"but only {max_available} available. Will load {max_available} records."
+                )
+                num_lines = max_available
+
+        # load records
         count = 0
 
         with open(self.input_path, "r", encoding="utf-8") as file:
@@ -149,9 +187,11 @@ class DataLoader:
                     self.articles.append(record)
                     count += 1
                 except json.decoder.JSONDecodeError:
+                    logger.warning(f"Skipping invalid JSON at line {i + 1}")
                     continue
 
-        logger.info(f"Loaded {len(self.articles)} articles from {self.input_path}")
+        logger.info(f"Loaded {len(self.articles)} articles from {self.input_path} "
+                    f"(total available: {total_records})")
 
 
 def read_jsonl_record(path: str,
@@ -205,3 +245,16 @@ def read_jsonl_record(path: str,
                 continue
 
     raise KeyError(f"Record with {target_key}='{target_val}' not found in {path}")
+
+
+def count_jsonl_records(file_path: str) -> int:
+    """
+    Record count for JSONL file.
+
+    Args:
+        file_path (str): Path to JSONL file
+    Returns:
+        int: Number of non-empty lines in file
+    """
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return sum(1 for line in f if line.strip())

@@ -18,9 +18,11 @@ PARSED_JSONL = RAW_DIR / "parsed_articles.jsonl"
 CLEANED_JSONL = PROCESSED_DIR / "cleaned_articles.jsonl"
 LOG_FILE = PROJECT_ROOT / "logs.txt"
 
-# create directories if missing
-RAW_DIR.mkdir(parents=True, exist_ok=True)
-CHUNKED_DIR.mkdir(parents=True, exist_ok=True)
+# models
+# HUGGING_FACE_MODEL = {"model": "dkleczek/bert-base-polish-cased-v1", "is_sentence_transformers_model": False}
+# HUGGING_FACE_MODEL = {"model": "sdadas/st-polish-paraphrase-from-mpnet", "is_sentence_transformers_model": True}
+HUGGING_FACE_MODEL = {"model": "intfloat/multilingual-e5-base", "is_sentence_transformers_model": True}
 
-# model
-HUGGING_FACE_MODEL = "dkleczek/bert-base-polish-uncased-v1"
+# Qdrant
+QDRANT_CONFIG = {"host": "localhost", "port": 6333}
+HNSW_CONFIG = {"m": 32, "ef_construct": 200} # 2-5M chunks, adjust to the collection and hardware
