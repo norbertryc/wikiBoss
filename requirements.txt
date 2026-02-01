@@ -1,9 +1,9 @@
 groq==0.34.1
 ipykernel==7.1.0
-langchain-groq==1.0.1
 langchain-text-splitters==1.0.0
 mwparserfromhell==0.7.2
 mwxml==0.3.6
+python-dotenv==1.2.1
 qdrant-client==1.16.0
 sentence-transformers==5.1.2
 tokenizers==0.22.1

@@ -42,16 +42,13 @@ class Chunker(DataLoader):
         super().__init__(*args, input_path=input_path, output_path=output_path, **kwargs)
         self.strategy = strategy
         self.engine = embedding_engine
+        self.chunk_prefix = embedding_engine.chunk_prefix
         self.max_tokens = embedding_engine.embedding_size
 
         self.splitters_by_strategy = {
             "on_tokens": self.split_on_tokens_strategy,
             "on_md_headers": self.split_on_md_headers
         }
-
-        self.chunk_prefix = ("passage: "
-                             if embedding_engine.model_name == "intfloat/multilingual-e5-base"
-                             else "")
 
     def _tokenize_and_split(self, text: str, content_budget: int, overlap_ratio: float = 0.2) -> list[str]:
         """
@@ -156,7 +153,7 @@ class Chunker(DataLoader):
         Yields:
             dict: Processed article with chunks or None if error occurred
         """
-        logger.info("Start chunking...")
+        logger.info(f"Start chunking with strategy {self.strategy}...")
 
         count = 0
 

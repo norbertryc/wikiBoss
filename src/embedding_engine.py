@@ -40,7 +40,13 @@ class EmbeddingEngine:
         config = AutoConfig.from_pretrained(self.model_name)
         self.max_seq_length = config.max_position_embeddings
 
+        self.chunk_prefix = ("passage: " if "e5" in self.model_name else "")
+        self.query_prefix = ("query: " if "e5" in self.model_name
+                             else "zapytanie: " if "mmlw" in self.model_name
+                             else "")
+
         self.model = self._load_model()
+        self.embedding_size = self.model.get_sentence_embedding_dimension()
 
         if use_fp16 and self.device == "cuda":
             self.model.half()
@@ -85,13 +91,3 @@ class EmbeddingEngine:
             int: Number of tokens (excluding special tokens)
         """
         return len(self.tokenizer.encode(text, add_special_tokens=False))
-
-    @property
-    def embedding_size(self) -> int:
-        """
-        Returns embedding dimension of the loaded model.
-
-        Returns:
-            int: Embedding vector size
-        """
-        return self.model.get_sentence_embedding_dimension()

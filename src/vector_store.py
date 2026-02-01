@@ -1,6 +1,5 @@
-from qdrant_client import QdrantClient, models as qd_models
 import time
-from warnings import warn
+from qdrant_client import QdrantClient, models as qd_models
 
 from .utils import track_progress_and_time, DataLoader
 from .logging_config import logger
@@ -16,12 +15,12 @@ class QdrantManager(DataLoader):
         embedding_engine (EmbeddingEngine): Engine for encoding text to embeddings. Set to None
             for browse/delete operations only.
         encoding_batch_size (int): Batch size for encoding operations (default: 512)
+        collection_name (str): Provide for retrieval operations.
         *args, **kwargs: Passed to DataLoader parent class
 
     Attributes:
         engine (EmbeddingEngine): Embedding engine instance
         qdrant_client (QdrantClient): Client for Qdrant operations
-        collections (list): List of collection names
         encoding_batch_size (int): Batch size for encoding
         time_encoding (float): Time spent on GPU encoding
         time_conversion (float): Time spent converting embeddings to lists
@@ -35,19 +34,20 @@ class QdrantManager(DataLoader):
                  input_path: str = None,
                  embedding_engine: EmbeddingEngine = None,
                  encoding_batch_size: int = 512,
+                 collection_name: str = None,
                  **kwargs
                  ):
 
         if input_path is None:
-            warn("'input_path' not specified - limited to operations on existing vector stores")
+            logger.warning("'input_path' not specified - limited to operations on existing vector stores")
         if embedding_engine is None:
-            warn("'embedding_engine' not provided - limited to collection browse/delete operations")
+            logger.warning("'embedding_engine' not provided - limited to collection browse/delete operations")
 
         super().__init__(*args, input_path=input_path, **kwargs)
         self.engine = embedding_engine
         self.qdrant_client = QdrantClient(**QDRANT_CONFIG)
-        self.collections = []
         self.encoding_batch_size = encoding_batch_size
+        self.collection_name = collection_name
 
         # detailed performance time
         self.time_encoding = 0
@@ -301,5 +301,24 @@ class QdrantManager(DataLoader):
             self.qdrant_client.delete_collection(collection)
             logger.info(f"Deleted collection {collection}")
 
-    def retrieve(self, query: str, collection_name: str, limit: int) -> dict|str:
+    def retrieve(self, query: str, limit: int) -> list[dict]:
+        """"""
+        hits = self.qdrant_client.query_points(
+            collection_name=self.collection_name,
+            query=self.engine.encode(self.engine.query_prefix + query).tolist(),
+            limit=limit
+        ).points
+
+        logger.info(f"Retrieved {len(hits)} documents for query: '{query}...'")
+
+        return [
+            {
+                "payload": hit.payload,
+                "id": hit.id,
+                "score": hit.score
+            }
+            for hit in hits
+        ]
+
+    def list_collections(self) -> list:
         """"""

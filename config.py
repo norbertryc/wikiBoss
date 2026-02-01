@@ -22,7 +22,11 @@ LOG_FILE = PROJECT_ROOT / "logs.txt"
 # HUGGING_FACE_MODEL = {"model": "dkleczek/bert-base-polish-cased-v1", "is_sentence_transformers_model": False}
 # HUGGING_FACE_MODEL = {"model": "sdadas/st-polish-paraphrase-from-mpnet", "is_sentence_transformers_model": True}
 HUGGING_FACE_MODEL = {"model": "intfloat/multilingual-e5-base", "is_sentence_transformers_model": True}
+# HUGGING_FACE_MODEL = {"model": "sdadas/mmlw-retrieval-roberta-base", "is_sentence_transformers_model": True}
 
 # Qdrant
 QDRANT_CONFIG = {"host": "localhost", "port": 6333}
-HNSW_CONFIG = {"m": 32, "ef_construct": 200} # 2-5M chunks, adjust to the collection and hardware
+HNSW_CONFIG = {"m": 32, "ef_construct": 200} # 2-5M chunks, adjust to the collection size and hardware
+
+# Groq api key
+ENV_PATH = PROJECT_ROOT / ".env"
