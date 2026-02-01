@@ -27,12 +27,9 @@ class WikiBoss:
 
         Args:
             qdrant_manager: QdrantManager instance for document retrieval
-            api_key: Groq API key. If None, will try to load from Config
+            api_key: Groq API key
             model: Primary LLM model name (default: llama-3.3-70b-versatile)
             enable_fallback: Enable automatic fallback to secondary model on rate limits
-
-        Raises:
-            ValueError: If api_key is None and not available in Config
         """
         self.qdrant_manager = qdrant_manager
         self.client = Groq(api_key=api_key)
