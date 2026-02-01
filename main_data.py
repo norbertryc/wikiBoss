@@ -28,16 +28,16 @@ def run(
 
     Examples:
         # Full pipeline with default 'on_tokens' chunking strategy
-        python main_data.py run
+        python main_data.py
 
         # Get all data and parse to jsonl file, test further processing on 100 articles with md_headers strategy
-        python main.py run --num-lines 100 --chunking-strategy on_md_headers --storage-suffix _test
+        python main.py --num-lines 100 --chunking-strategy on_md_headers --storage-suffix _test
 
         # Only chunking step, all cleaned articles
-        python main_data.py run --no-download --no-clean --no-embedding
+        python main_data.py --no-download --no-clean --no-embedding
 
         # Process cleaned articles from line 10000, add to existing chunk file and qdrant collection
-        python main_data.py run \
+        python main_data.py \
         --no-download --no-clean \
         --start-from 10000 \
         --clear-chunks False \
