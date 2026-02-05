@@ -1,16 +1,22 @@
-    tqdm==4.66.3
-    hf_xet==1.2.0
-    langchain==1.0.2
-    langchain-text-splitters==1.0.0
-    spacy==3.8.7
-    qdrant-client==1.15.1
-    sentence-transformers==5.2.2
-    torch==2.9.1
-    transformers==4.57.3
-    datasets==2.21.0
-    pyarrow==15.0.0
-    numpy==1.26.0
-    groq==1.0.0
+tqdm==4.66.3
+hf_xet==1.2.0
+langchain==1.0.2
+langchain-text-splitters==1.0.0
+spacy==3.8.7
+qdrant-client==1.15.1
+sentence-transformers==2.2.2
+transformers==4.39.3
+tokenizers==0.15.1
+huggingface-hub==0.23.0
+datasets==2.21.0
+torch==2.2.2
+pyarrow==15.0.0
+numpy==1.26.0
+groq==1.0.0
+pydantic==2.12.5
+pydantic-settings==2.12.0
+
+
 
 
 

@@ -1,55 +1,74 @@
 from qdrant_client import QdrantClient
+from qdrant_client.http import models as qdrant_models
 from sentence_transformers import SentenceTransformer
-from config import QDRANT_URL, COLLECTION_NAME, EMBEDDING_MODEL, TOP_K
+from langchain_core.documents import Document
 
-class Document:
-    """Minimal Document class to hold page content and metadata for LLM retrieval"""
-    def __init__(self, page_content, metadata=None):
-        self.page_content = page_content
-        self.metadata = metadata or {}
 
 class Retriever:
-    """Retriever class to fetch relevant documents for LLM"""
+    """Retriever class responsible only for vector search in Qdrant"""
 
-    def __init__(self):
-        self.client = QdrantClient(url=QDRANT_URL)
-        self.model = SentenceTransformer(EMBEDDING_MODEL)
-        self.top_k = TOP_K
+    def __init__(
+        self,
+        qdrant_url: str,
+        collection_name: str,
+        embedding_model: str,
+        top_k: int = 5,
+    ):
+        self.client = QdrantClient(url=qdrant_url)
+        self.model = SentenceTransformer(embedding_model)
+        self.collection_name = collection_name
+        self.top_k = top_k
 
-    def embed_query(self, query: str):
+    def embed_query(self, query: str) -> list[float]:
         """Convert query to embedding vector"""
-        return self.model.encode(query)
+        return self.model.encode(query).tolist()
 
-    def retrieve(self, query: str, top_k=None):
-        """Return top-k search results from Qdrant"""
-        top_k = top_k or self.top_k
-        query_vector = self.embed_query(query)
-        results = self.client.search(
-            collection_name=COLLECTION_NAME,
-            query_vector=query_vector,
-            limit=top_k,
-            score_threshold=0.65
+    def retrieve(self, query: str, top_k: int | None = None):
+        """Return raw Qdrant search results (ScoredPoint)"""
+        limit = top_k or self.top_k
+
+        return self.client.search(
+            collection_name=self.collection_name,
+            query_vector=self.embed_query(query),
+            limit=limit,
         )
-        return results
-    
+
     def get_chunks_by_title(self, title: str):
-        """Return all document chunks for a given article title"""
-        all_docs, _ = self.client.scroll(
-            collection_name=COLLECTION_NAME,
-            with_payload=True,
-            limit=50000
+        """Return all chunks belonging to a specific Wikipedia article"""
+        title_filter = qdrant_models.Filter(
+            must=[
+                qdrant_models.FieldCondition(
+                    key="title",
+                    match=qdrant_models.MatchValue(value=title),
+                )
+            ]
         )
-        return [doc for doc in all_docs if doc.payload.get("title") == title]
 
-    def get_relevant_documents(self, query: str, top_k=None):
-        """Return documents in format expected by LLM"""
+        results, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            with_payload=True,
+            limit=50000,
+            scroll_filter=title_filter,
+        )
+
+        return results
+
+    def retrieve_as_documents(self, query: str, top_k: int | None = None):
+        """
+        Retrieve chunks and convert them to LangChain Documents.
+        Returns a list of Document objects.
+        """
         results = self.retrieve(query, top_k=top_k)
-        documents = []
-        for hit in results:
-            content = hit.payload.get("content", "")
-            metadata = {"title": hit.payload.get("title", ""),
-                        "score": hit.score}
-            documents.append(Document(page_content=content, metadata=metadata))
-        return documents
 
-retriever = Retriever()
+        documents: list[Document] = []
+        for hit in results:
+            documents.append(
+                Document(
+                    page_content=hit.payload.get("content", ""),
+                    metadata={
+                        "title": hit.payload.get("title", ""),
+                        "score": hit.score,
+                    },
+                )
+            )
+        return documents

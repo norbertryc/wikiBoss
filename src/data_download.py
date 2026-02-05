@@ -1,8 +1,15 @@
 import json
-import os
-
-from config import WIKIPEDIA_PL_DATASET
+from pathlib import Path
+from datetime import datetime
 from datasets import load_dataset
+from tqdm import tqdm 
+
+
+# =========================================================
+# CONSTANTS AND PATHS
+# =========================================================
+WIKIPEDIA_PL_DATASET = "chrisociepa/wikipedia-pl-20230401"
+DATA_FOLDER = Path("data")
 
 
 # =========================================================
@@ -34,10 +41,9 @@ def save_wiki_to_jsonl(articles, path: str):
     """
     Saves Wikipedia articles as JSONL (1 article per line).
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
 
     with open(path, "w", encoding="utf-8") as f:
-        for article in articles:
+        for article in tqdm(articles, desc="Saving articles"):
             f.write(json.dumps(article, ensure_ascii=False) + "\n")
 
     print(f"Saved Wikipedia to JSONL: {path}")
@@ -54,16 +60,26 @@ def load_wiki_from_jsonl(path: str):
 
 
 if __name__ == "__main__":
-    RAW_WIKI_JSONL = "data/raw_wiki_pl.jsonl"
+    today_str = datetime.now().strftime("%Y%m%d")
+    raw_wiki_jsonl = DATA_FOLDER / f"raw_wiki_pl_JSONL_format_{today_str}.jsonl"
+    DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 
     print("Streaming Wikipedia download...")
 
     articles = download_wiki_data(
-        WIKIPEDIA_PL_DATASET,
-        limit=None  
-    )
+        WIKIPEDIA_PL_DATASET, limit=None)
 
     print("Saving Wikipedia as JSONL...")
-    save_wiki_to_jsonl(articles, RAW_WIKI_JSONL)
+    save_wiki_to_jsonl(articles, raw_wiki_jsonl)
 
     print("DONE.")
+
+    # =============================
+    # CHECK OLD AND NEW JSONL FILES
+    # =============================
+    old_file = Path("data/raw_wiki_pl.jsonl")
+    new_file = raw_wiki_jsonl 
+
+    print("OLD file exists:", old_file.exists(), "size:", old_file.stat().st_size)
+    print("NEW file exists:", new_file.exists(), "size:", new_file.stat().st_size)
+

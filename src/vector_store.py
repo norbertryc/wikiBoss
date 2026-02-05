@@ -25,7 +25,6 @@ class QdrantManager:
         )
         print(f"Created collection '{collection_name}' with indexing disabled.")
 
-
     def upload_bulk_vectors(
         self,
         collection_name: str,
@@ -39,6 +38,10 @@ class QdrantManager:
         Assumes that the collection already exists.
         """
         print(f"Uploading {len(vectors)} vectors to '{collection_name}'...")
+
+        # ADDED DEBUG
+        print("DEBUG upload_bulk_vectors: type(vectors) =", type(vectors), "len(ids) =", len(ids) if ids is not None else None)  # ADDED DEBUG
+
 
         for _ in tqdm(range(1), desc="Uploading vectors to Qdrant"):
             self.client.upload_collection(
@@ -62,7 +65,6 @@ class QdrantManager:
         )
         print(f"Re-enabled indexing for '{collection_name}'")
 
-
     def generate_embeddings(self, texts, model_name: str, batch_size: int = 128):
         """
         Generates embeddings for a list of texts using SentenceTransformer in batches.
@@ -82,7 +84,6 @@ class QdrantManager:
 
         return embeddings_all
 
-
     def delete_collection_if_exists(self, collection_name: str):
         """
         Deletes a Qdrant collection if it already exists.
@@ -94,5 +95,37 @@ class QdrantManager:
         else:
             print(f"Collection '{collection_name}' does not exist, skipping deletion.")
 
+    # ================================
+    # UPLOAD COLLECTION
+    # ================================
+    def upload_collection(
+        self,
+        collection_name: str,
+        texts: list[str],
+        payloads: list[dict],
+        ids: list[str],
+        model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        batch_size: int = 512,
+    ):
+        """
+        Convenience method: generate embeddings, upload them in bulk, and enable indexing.
+    
+        """
+        embeddings = self.generate_embeddings(
+            texts=texts,
+            model_name=model_name,
+            batch_size=batch_size
+        )
+
+        # ADDED DEBUG
+        print("DEBUG upload_collection: embeddings.shape =", getattr(embeddings, "shape", None), "len(ids) =", len(ids))  # ADDED DEBUG
 
 
+        self.upload_bulk_vectors(
+            collection_name=collection_name,
+            vectors=embeddings,
+            payloads=payloads,
+            ids=ids
+        )
+
+        self.enable_indexing_after_upload(collection_name)

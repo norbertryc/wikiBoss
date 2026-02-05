@@ -5,8 +5,8 @@ from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from .retriever import retriever
-from .llm import ask_about
+from ..src.retriever import retriever
+from ..src.llm import ask_about
 from config import COLLECTION_NAME
 
 #one-time collect retirever results to notebook
