@@ -1,5 +1,5 @@
 import uuid
-from tqdm import tqdm  # ADDED: tqdm
+from tqdm import tqdm 
 
 from config import Config
 from src.data_download import load_wiki_from_jsonl
@@ -48,15 +48,17 @@ def main():
             
 
     manager = QdrantManager()
-    # manager.delete_collection_if_exists(cfg.collection_name)
-    # collection_name = "wiki_test_100"
+    collection_name = "wiki_test_after_code_review"
+
+    # manager.delete_collection_if_exists(collection_name=collection_name)
+    
     manager.create_collection_no_indexing(
-        cfg.collection_name,
+        collection_name=collection_name,
         vector_size=cfg.vector_size
     )
 
     manager.upload_collection(
-        collection_name=cfg.collection_name,
+        collection_name=collection_name,
         texts=texts,
         payloads=payloads,
         ids=ids,

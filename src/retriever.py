@@ -1,7 +1,6 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
 from sentence_transformers import SentenceTransformer
-from langchain_core.documents import Document
 
 
 class Retriever:
@@ -53,22 +52,3 @@ class Retriever:
 
         return results
 
-    def retrieve_as_documents(self, query: str, top_k: int | None = None):
-        """
-        Retrieve chunks and convert them to LangChain Documents.
-        Returns a list of Document objects.
-        """
-        results = self.retrieve(query, top_k=top_k)
-
-        documents: list[Document] = []
-        for hit in results:
-            documents.append(
-                Document(
-                    page_content=hit.payload.get("content", ""),
-                    metadata={
-                        "title": hit.payload.get("title", ""),
-                        "score": hit.score,
-                    },
-                )
-            )
-        return documents

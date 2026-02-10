@@ -33,12 +33,20 @@ class Config(BaseSettings):
     # =========================
     qdrant_url: str = "http://localhost:6333"
     base_collection_name: str = "wiki_chunks"
-    top_k: int = 5
+    top_k: int = 20
+
+    # =========================
+    # LLM / ASSISTANT
+    # =========================
+    groq_api_key: str 
+    llm_model_name: str = "llama-3.3-70b-versatile"
+    llm_top_k: int = 5
+    llm_max_context_chars: int = 12000
+   
 
     # =========================
     # DERIVED VALUES
     # =========================
-    collection_name: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -46,11 +54,4 @@ class Config(BaseSettings):
         case_sensitive=False,
     )
 
-    def model_post_init(self, __context) -> None:
-        self.collection_name = (
-            f"{self.base_collection_name}_"
-            f"cs{self.chunk_size}_"
-            f"co{self.chunk_overlap}_"
-            f"tok{self.tokenization_variant}_"
-            f"emb{self.embedding_model.split('/')[-1]}"
-        )
+    
