@@ -22,14 +22,13 @@ class Retriever:
         """Convert query to embedding vector"""
         return self.model.encode(query).tolist()
 
-    def retrieve(self, query: str, top_k: int | None = None):
+    def retrieve(self, query: str):
         """Return raw Qdrant search results (ScoredPoint)"""
-        limit = top_k or self.top_k
 
         return self.client.search(
             collection_name=self.collection_name,
             query_vector=self.embed_query(query),
-            limit=limit,
+            limit=self.top_k
         )
 
     def get_chunks_by_title(self, title: str):

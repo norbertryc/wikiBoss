@@ -17,7 +17,7 @@ class Assistant:
     def __init__(self, cfg: Config): 
         self.cfg = cfg 
         self.retriever = Retriever(qdrant_url=cfg.qdrant_url, 
-                                   collection_name=cfg.collection_name, 
+                                   collection_name=cfg.base_collection_name, 
                                    embedding_model=cfg.embedding_model, 
                                    top_k=cfg.top_k) 
         
@@ -66,7 +66,8 @@ class Assistant:
         Retrieve top_k documents from the retriever and generate an answer using Groq LLM.
 
         """
-        docs = self.retriever.retrieve( query, top_k=cfg.top_k)
+        raw_results = self.retriever.retrieve( query, top_k=cfg.top_k)
+        docs = self._convert_to_documents(raw_results)
         if not docs:
             return "No documents found in the retriever."
 

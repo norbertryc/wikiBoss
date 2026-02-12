@@ -1,16 +1,29 @@
-import os
 import sys
 import json
 from pathlib import Path
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT))
 
-from ..src.retriever import retriever
-from ..app_assistant import ask_about
-from config import COLLECTION_NAME
+from src.retriever import Retriever
+from app_assistant import Assistant
+from config import Config
 
-#one-time collect retirever results to notebook
+# =========================================================
+# CONFIG
+# =========================================================
 
+cfg = Config()
+
+
+retriever = Retriever(
+    qdrant_url=cfg.qdrant_url,
+    collection_name=cfg.base_collection_name,
+    embedding_model=cfg.embedding_model,
+    top_k=cfg.top_k
+)
+
+assistant = Assistant(cfg) 
 
 test_titles = [
     "Maria Skłodowska-Curie",
@@ -35,103 +48,87 @@ full_articles_titles = [
 
 llm_questions = [
     "Kim była Maria Skłodowska-Curie",
-    "Co to jest Paracetamol",
-    "Jakie są właściwości Paracetamolu",
-    "Opisz Katowice",
-    "Jakie są cechy roweru górskiego",
+    "Opisz Warszawę",  
 ]
 
-for query_title in test_titles:
-    print(f"\n=== RETRIEVER TEST FOR: {query_title} ===\n")
+ARTIFACTS_DIR = Path("artifacts")
 
-    results = retriever.retrieve(query_title)
+# =========================================================
+# TEST RETRIEVER and CHUNKS PRINTING
+# =========================================================
 
-    if not results:
-        print("No results above threshold.")
+for title in test_titles + ["Warszawa"]: 
+    print(f"\n=== RETRIEVER TEST FOR: {title} ===")
+    docs = retriever.get_chunks_by_title(title)
+    print(f"Liczba chunków: {len(docs)}")
+
+    if not docs:
+        print("Brak chunków w vector store.")
         continue
 
-    for i, hit in enumerate(results, 1):
-        print(f"[{i}] SCORE: {hit.score:.4f} | Title: {hit.payload.get('title')}")
+    for i, d in enumerate(docs[:5], 1):  # pokaż pierwsze 5 chunków
+        text_snippet = d.payload.get("text", "")[:150]
+        print(f"[{i}] {text_snippet}...")
 
 # =========================================================
-# ONE-TIME: COLLECT RETRIEVER & LLM RESULTS TO JSON
+# RETRIEVER RESULTS TO JSON
 # =========================================================
+print(f"\n=== RETRIEVER TEST TO JSON ===")
 
-# retriever results
-ARTIFACTS_DIR = Path("artifacts")
-ARTIFACTS_DIR.mkdir(exist_ok=True) 
-output_path = ARTIFACTS_DIR / "retriever_results.json"
-
+retriever_results_path = ARTIFACTS_DIR / "retriever_results.json"
 all_results = {}
 
-for query_title in test_titles:
-    results = retriever.retrieve(query_title)
+for title in test_titles + ["Warszawa"]:
+    docs = retriever.get_chunks_by_title(title)
+    all_results[title] = []
 
-    all_results[query_title] = []
-
-    for i, hit in enumerate(results[:5]):
-        result = {
+    for i, d in enumerate(docs[:5]):
+        all_results[title].append({
             "rank": i + 1,
-            "score": float(hit.score),
-            "title": hit.payload.get("title"),
-            "text": hit.payload.get("text"),
-        }
-        all_results[query_title].append(result)
+            "title": d.payload.get("title"),
+            "score": float(d.score) if hasattr(d, "score") else None,
+            "text": d.payload.get("text", ""),
+        })
 
-with open(output_path, "w", encoding="utf-8") as f:
+with open(retriever_results_path, "w", encoding="utf-8") as f:
     json.dump(all_results, f, ensure_ascii=False, indent=2)
 
-print(f"Retriever results saved to {output_path}")
-
-# articles from vector store
-full_articles_path = ARTIFACTS_DIR / "full_articles_results.json"
-full_articles_results = {}
-
-for title in full_articles_titles:
-    docs = retriever.get_chunks_by_title(title) 
-    full_text = "\n".join([d.payload.get("text", "") for d in docs])
-
-    full_articles_results[title] = {
-        "title": title,
-        "full_text": full_text
-    }
-
-with open(full_articles_path, "w", encoding="utf-8") as f:
-    json.dump(full_articles_results, f, ensure_ascii=False, indent=2)
-
-print(f"Full articles saved to {full_articles_path}")
-
-# llm answers
-OUTPUT_DIR = ARTIFACTS_DIR 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-for query in llm_questions:
-    answer = ask_about(query)
-    file_name = "llm_answer_" + "".join(c if c.isalnum() else "_" for c in query) + ".json"
-    file_path = os.path.join(OUTPUT_DIR, file_name)
-    
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump({"question": query, "answer": answer}, f, ensure_ascii=False, indent=2)
-    
-    print(f"Saved answer to {file_path}\n")
-
+print(f"\nRetriever results saved to {retriever_results_path}")
 
 # =========================================================
-# ONE-TIME: EXPORT ALL TITLES FROM COLLECTION TO JSON
+# FULL ARTICLES
 # =========================================================
 
-# data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-# os.makedirs(data_dir, exist_ok=True)
-# output_path_all_titles = ARTIFACTS_DIR / "all_titles.json"
+# full_articles_path = ARTIFACTS_DIR / "full_articles_results.json"
+# full_articles_results = {}
 
-# all_docs, _ = retriever.client.scroll(
-#     collection_name=COLLECTION_NAME,
-#     limit=50000,
-#     with_payload=True)
+# for title in full_articles_titles + ["Warszawa"]: 
+#     docs = retriever.get_chunks_by_title(title)
+#     full_text = "\n".join(d.payload.get("text", "") for d in docs)
 
-# all_titles = [doc.payload.get("title") for doc in all_docs]
+#     full_articles_results[title] = {
+#         "title": title,
+#         "full_text": full_text,
+#         "num_chunks": len(docs)
+#     }
 
-# with open(output_path_all_titles, "w", encoding="utf-8") as f:
-#     json.dump(all_titles, f, ensure_ascii=False, indent=2)
+# with open(full_articles_path, "w", encoding="utf-8") as f:
+#     json.dump(full_articles_results, f, ensure_ascii=False, indent=2)
 
-#     print(f"\nAll titles saved to {output_path}\n")
+# print(f"Full articles saved to {full_articles_path}")
+
+# # =========================================================
+# #  LLM ANSWERS
+# # =========================================================
+
+# print("\n=== LLM ANSWERS ===")
+# for query in llm_questions:
+#     answer = assistant.generate_answer(query)
+#     file_name = "llm_answer_" + "".join(c if c.isalnum() else "_" for c in query) + ".json"
+#     file_path = ARTIFACTS_DIR / file_name
+
+#     with open(file_path, "w", encoding="utf-8") as f:
+#         json.dump({"question": query, "answer": answer}, f, ensure_ascii=False, indent=2)
+
+#     print(f"\nQuestion: {query}\nAnswer: {answer}\nSaved to {file_path}")
+
