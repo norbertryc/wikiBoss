@@ -8,22 +8,32 @@ AI assistant operating on Polish Wikipedia.
 
 ## Getting started
 
-1.  **Start Qdrant** \
-    Run the following command to download the Docker image and start the container:
-    ```bash
-    make start
-    ```
-    *(Note: The `qdrant/qdrant` image will be pulled automatically if not present locally.)*
-
-2.  **Create virtual environment, install dependencies**
+1. **Create virtual environment, install dependencies**
     ```bash
     python -m venv .venv
     source .venv/bin/activate
     pip install -r requirements.txt
     python -m ipykernel install --user --name=wikiBoss
     ```
+    
+2. **Configure environmental variables**
+    ```bash
+    # Copy example config
+    cp .env.example .env
+    
+    # Edit .env and add your Groq api key
+    nano .env
+    ```
+   
+3. **Start Qdrant** \
+    Run the following command to download the Docker image and start the container:
+    ```bash
+    make start
+    ```
+    *(Note: The `qdrant/qdrant` image will be pulled automatically if not present locally.)*
 
-3.  **Run the data processing app**
+
+4. **Run the data processing app**
     ```bash
     # check options
     python main_data.py --help
@@ -44,17 +54,15 @@ AI assistant operating on Polish Wikipedia.
     --start-from 10000 \
     --clear-chunks False \
     --delete-collection False \
-    --chunking-strategy on_tokens \
-    --storage-suffix _model_name
+    --chunking-strategy on_tokens
     ```
     
-4. Run the rag app
+5. **Run the rag app**
     ```bash
-   # create .env file with Groq api key
-   echo "GROQ_API_KEY=your_api_key" > .env
-   
-   # run in cli
+    # run in cli
    python main_rag.py
     ```
+
    Example:
+
 ![basic rag in cli](examples/images/basic_cli_rag.png)

@@ -1,28 +1,33 @@
+import logging
+from config import config
 from src.get_data import download_wikidump, parse_dump
-from config import *
-from src.logging_config import logger
 from src.clean_data import Cleaner
 from src.chunk_data import Chunker
 from src.vector_store import QdrantManager
 from src.embedding_engine import EmbeddingEngine
 
+logger = logging.getLogger(__name__)
 
-def data_pipeline(download: bool = True,
-                  clean: bool = True,
-                  chunk: bool = True,
-                  embedding: bool = True,
-                  data_num_lines_to_load: int = None,
-                  start_loading_data_from: int = 0,
-                  chunking_strategy: str = "on_tokens",
-                  storage_name_suffix: str = "",
-                  upload_batch: int = 10000,
-                  encoding_batch_size: int = 512,
-                  delete_collection_if_exists: bool = True,
-                  clear_cleaner_output: bool = True,
-                  clear_chunker_output: bool = True,
-                  device: str = "cuda",
-                  half_precision: bool = False,
-                  ):
+def run_data_pipeline(
+        # Workflow control
+        download: bool = True,
+        clean: bool = True,
+        chunk: bool = True,
+        embedding: bool = True,
+
+        # Data loading options
+        data_num_lines_to_load: int = None,
+        start_loading_data_from: int = 0,
+
+        # Chunking, storage name
+        chunking_strategy: str = "on_tokens",
+        storage_suffix_override: str|None = None,  # Override auto-suffix
+
+        # File handling
+        delete_collection_if_exists: bool = True,
+        clear_cleaner_output: bool = True,
+        clear_chunker_output: bool = True,
+                      ):
     """
     End-to-end data pipeline for Wikipedia RAG system: download, clean, chunk, and embed.
 
@@ -47,20 +52,14 @@ def data_pipeline(download: bool = True,
                                       Useful for testing or rerun on fail.
         chunking_strategy (str): Chunking method - 'on_tokens' or 'on_md_headers' (default: 'on_tokens').
                                 Must be consistent between chunk and embedding steps.
-        storage_name_suffix (str): Suffix appended to chunk file and collection names (default: "").
-                                  Must be consistent between chunk and embedding steps.
-                                  Example: "_test" creates "on_tokens_chunks_test.jsonl"
-                                  and collection "on_tokens_test".
-        upload_batch (int): Number of points to accumulate before Qdrant upload (default: 10000)
-        encoding_batch_size (int): Batch size for embedding generation (default: 512). Adjust to your hardware!
+        storage_suffix_override (str): Suffix appended to chunk file and collection names. If not provided,
+                                    embedding model name is used.
         delete_collection_if_exists (bool): If True, deletes existing Qdrant collection
                                            before upload (default: True)
         clear_cleaner_output (bool): If True, deletes existing cleaned file before processing (default: True).
                                     If False, new records are appended to existing file.
         clear_chunker_output (bool): If True, deletes existing chunks file before processing (default: True).
                                     If False, new chunks are appended to existing file.
-        device (str): Device for embedding model - 'cuda' or 'cpu' (default: 'cuda')
-        half_precision (bool): If True, uses FP16 for embedding model on GPU (default: False)
 
     Note:
         - Download step: If dump or parsed files exist, download/parse is skipped automatically
@@ -78,33 +77,37 @@ def data_pipeline(download: bool = True,
           ensure these parameters match.
 
           Example filenames/collections:
-          - strategy='on_tokens', suffix='' → 'on_tokens_chunks.jsonl' / collection 'on_tokens'
-          - strategy='on_md_headers', suffix='_v2' → 'on_md_headers_chunks_v2.jsonl' / collection 'on_md_headers_v2'
+          - strategy='on_tokens', suffix=None → 'on_tokens_chunks_model_name.jsonl' / collection 'on_tokens_model_name'
+          - strategy='on_md_headers', suffix='_test' → 'on_md_headers_chunks_test.jsonl' / collection 'on_md_headers_test'
     """
     # create processed data directories if missing
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    CHUNKED_DIR.mkdir(parents=True, exist_ok=True)
+    config.raw_dir.mkdir(parents=True, exist_ok=True)
+    config.chunked_dir.mkdir(parents=True, exist_ok=True)
 
     # download latest wikidump and parse to jsonl file
     if download:
-        download_wikidump(DUMP_URL, DUMP_PATH)
-        parse_dump(DUMP_PATH, PARSED_JSONL)
+        download_wikidump(config.dump_url, config.dump_path)
+        parse_dump(config.dump_path, config.parsed_jsonl)
 
     # clean parsed mediawiki articles
     if clean:
-        cleaner = Cleaner(input_path=PARSED_JSONL,
-                          output_path=CLEANED_JSONL,
+        cleaner = Cleaner(input_path=config.parsed_jsonl,
+                          output_path=config.cleaned_jsonl,
                           clear_output=clear_cleaner_output,
                           num_lines=data_num_lines_to_load)
         cleaner.clean()
 
     # split data into chunks using a selected strategy, embed and store them in a vector database
     if chunk or embedding:
-        embedding_engine = EmbeddingEngine(HUGGING_FACE_MODEL, device=device, use_fp16=half_precision)
-        chunks_file = CHUNKED_DIR / f"{chunking_strategy}_chunks{storage_name_suffix}.jsonl"
+        embedding_engine = EmbeddingEngine(config.embedding_model,
+                                           device=config.device,
+                                           use_fp16=config.half_precision)
+
+        chunks_file = config.get_chunked_jsonl_path(chunking_method=chunking_strategy,
+                                                    suffix_override=storage_suffix_override)
 
         if chunk:
-            chunker = Chunker(input_path=CLEANED_JSONL,
+            chunker = Chunker(input_path=config.cleaned_jsonl,
                               output_path=chunks_file,
                               embedding_engine=embedding_engine,
                               clear_output=clear_chunker_output,
@@ -115,18 +118,19 @@ def data_pipeline(download: bool = True,
 
         if embedding:
             qdrant = QdrantManager(input_path=chunks_file,
-                                    num_lines=data_num_lines_to_load,
-                                    start_loading=start_loading_data_from,
-                                    embedding_engine=embedding_engine,
-                                    encoding_batch_size=encoding_batch_size)
+                                   num_lines=data_num_lines_to_load,
+                                   start_loading=start_loading_data_from,
+                                   embedding_engine=embedding_engine,
+                                   encoding_batch_size=config.encoding_batch_size)
 
-            collection_name = chunking_strategy + storage_name_suffix
+            collection_name = config.get_collection_name(chunking_method=chunking_strategy,
+                                                         suffix_override=storage_suffix_override)
             if delete_collection_if_exists:
                 qdrant.delete_collections(collection_name)
-            qdrant.upload_points(collection_name, upload_batch=upload_batch)
+            qdrant.upload_points(collection_name,
+                                 upload_batch_size=config.upload_batch_size)
 
     logger.info("END")
-    logger.info(" ")
 
 if __name__ == "__main__":
-    data_pipeline()
+    run_data_pipeline()

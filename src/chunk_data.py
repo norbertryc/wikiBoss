@@ -1,10 +1,12 @@
+import logging
 from langchain_text_splitters import (Tokenizer,
                                       split_text_on_tokens,
                                       ExperimentalMarkdownSyntaxTextSplitter)
 
 from .utils import save_in_batches, track_progress_and_time, DataLoader, count_jsonl_records
-from .logging_config import logger
 from .embedding_engine import EmbeddingEngine
+
+logger = logging.getLogger(__name__)
 
 
 class Chunker(DataLoader):

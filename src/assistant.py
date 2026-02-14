@@ -1,7 +1,9 @@
+import logging
 from groq import Groq
+from config import config
 from .vector_store import QdrantManager
-from .logging_config import logger
 
+logger = logging.getLogger(__name__)
 
 class WikiBoss:
     """
@@ -12,14 +14,12 @@ class WikiBoss:
         FALLBACK_MODEL (str): Default fallback model when primary hits rate limits
     """
 
-    PRIMARY_MODEL = "llama-3.3-70b-versatile"
-    FALLBACK_MODEL = "llama-3.1-8b-instant"
-
     def __init__(
             self,
             qdrant_manager: QdrantManager,
             api_key: str = None,
-            model: str = PRIMARY_MODEL,
+            model: str = config.primary_model,
+            fallback_model: str = config.fallback_model,
             enable_fallback: bool = True
     ):
         """
@@ -34,7 +34,7 @@ class WikiBoss:
         self.qdrant_manager = qdrant_manager
         self.client = Groq(api_key=api_key)
         self.model = model
-        self.fallback_model = self.FALLBACK_MODEL if enable_fallback else None
+        self.fallback_model = fallback_model if enable_fallback else None
         self._temperature = 0.2
         self._top_k = 5
 
@@ -112,12 +112,15 @@ class WikiBoss:
                 "1. Odpowiadaj TYLKO na podstawie podanych fragmentów artykułów\n"
                 "2. Bądź zwięzły i konkretny\n"
                 "3. Jeśli fragmenty nie zawierają odpowiedzi, powiedz: 'Przepraszam, nie znalazłem odpowiedzi w dostępnych źródłach'\n\n"
-                f"Fragmenty artykułów:\n{context}"
             )
         }
         user_query = {
             "role": "user",
-            "content": question
+            "content": (
+                f"Kontekst (fragmenty artykułów):\n"
+                f"{context}\n\n"
+                f"Pytanie: {question}"
+            )
         }
 
         return [system_prompt, user_query]

@@ -1,21 +1,22 @@
+import logging
 from torch import Tensor, cuda
 from transformers import AutoTokenizer, AutoConfig
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.models import Transformer, Pooling
 
-from .logging_config import logger
+from config import config, EmbeddingModelConfig
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingEngine:
     """
-    Wrapper for SentenceTransformers and HuggingFace models. Manages model loading, tokenizer,
-    and embedding generation.
+    Wrapper for SentenceTransformers and HuggingFace models.
 
     Args:
-        model_config (dict): Dictionary with 'model' key (hugging face model name/path) and optional
-                            'is_sentence_transformers_model' boolean flag
-        device (str): Device for model inference - 'cuda' or 'cpu' (default: 'cuda')
-        use_fp16 (bool): If True, converts model to half precision on GPU (default: False)
+        model_config (EmbeddingModelConfig): Pydantic config object with model settings
+        device (str): Device for model inference - 'cuda' or 'cpu'
+        use_fp16 (bool): If True, converts model to half precision on GPU
 
     Attributes:
         model_name (str): Name or path of the loaded model
@@ -27,23 +28,32 @@ class EmbeddingEngine:
     """
 
     def __init__(self,
-                 model_config: dict,
-                 device: str = "cuda",
-                 use_fp16: bool = False):
-        self.model_name = model_config["model"]
-        self.is_st_model = model_config["is_sentence_transformers_model"]
+                 model_config: EmbeddingModelConfig = None,
+                 device: str = None,
+                 use_fp16: bool = None):
+
+        # use defaults from config if not provided
+        if model_config is None:
+            model_config = config.embedding_model
+        if device is None:
+            device = config.device
+        if use_fp16 is None:
+            use_fp16 = config.half_precision
+
+        self.model_name = model_config.model
+        self.is_st_model = model_config.is_sentence_transformers_model
         self.device = device if cuda.is_available() else "cpu"
 
         logger.info(f"Initializing EmbeddingEngine with: {self.model_name} on {self.device}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=True)
-        config = AutoConfig.from_pretrained(self.model_name)
-        self.max_seq_length = config.max_position_embeddings
+        autoconfig = AutoConfig.from_pretrained(self.model_name)
+        self.max_seq_length = autoconfig.max_position_embeddings
 
         self.chunk_prefix = ("passage: " if "e5" in self.model_name else "")
         self.query_prefix = ("query: " if "e5" in self.model_name
                              else "zapytanie: " if "mmlw" in self.model_name
-                             else "")
+        else "")
 
         self.model = self._load_model()
         self.embedding_size = self.model.get_sentence_embedding_dimension()
@@ -78,7 +88,10 @@ class EmbeddingEngine:
         Returns:
             Tensor: Numpy array of embeddings with shape (n_texts, embedding_dim)
         """
-        return self.model.encode(texts, batch_size=batch_size, device=self.device)
+        return self.model.encode(texts,
+                                 batch_size=batch_size,
+                                 device=self.device,
+                                 show_progress_bar=False)
 
     def get_token_count(self, text: str) -> int:
         """

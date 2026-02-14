@@ -1,10 +1,11 @@
 import json
 import time
+import logging
 from functools import wraps
 from pathlib import Path
 from tqdm import tqdm
 
-from .logging_config import logger
+logger = logging.getLogger(__name__)
 
 
 def file_exists(path: str | Path) -> bool:

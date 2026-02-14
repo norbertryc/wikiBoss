@@ -1,13 +1,15 @@
 import json
 import time
+import logging
 import re
 import bz2
 import requests
 import mwxml
 from tqdm import tqdm
 
-from .logging_config import logger
 from .utils import file_exists
+
+logger = logging.getLogger(__name__)
 
 
 def download_wikidump(url: str, filepath: str

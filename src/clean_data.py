@@ -1,9 +1,11 @@
+import logging
 import re
 import regex
 import mwparserfromhell
 
 from .utils import save_in_batches, track_progress_and_time, DataLoader, count_jsonl_records
-from .logging_config import logger
+
+logger = logging.getLogger(__name__)
 
 
 class Cleaner(DataLoader):

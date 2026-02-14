@@ -1,22 +1,29 @@
 import typer
-from src.run.rag_pipeline import rag_pipeline
+import logging
+from config import config
+from src.logging_config import setup_logging
+from src.run.rag_pipeline import run_rag_pipeline
 
+
+setup_logging(
+    log_file=config.app_log_file,
+    log_level=config.log_level,
+    log_to_console=False
+)
+logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 
 
 @app.command()
 def run(
-        qdrant_collection_name: str = "on_md_headers_e5_full",
-        device: str = "cuda",
-        half_precision: bool = False
+        qdrant_collection_name: str =  config.get_collection_name("on_md_headers",
+                                                                  suffix_override="e5_full")
 ):
     """"""
 
-    rag_pipeline(
-        qdrant_collection_name=qdrant_collection_name,
-        device=device,
-        half_precision=half_precision
+    run_rag_pipeline(
+        qdrant_collection_name=qdrant_collection_name
     )
 
 if __name__ == "__main__":
