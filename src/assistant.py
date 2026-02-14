@@ -8,10 +8,6 @@ logger = logging.getLogger(__name__)
 class WikiBoss:
     """
     Basic RAG interface for Polish Wikipedia using Groq.
-
-    Attributes:
-        PRIMARY_MODEL (str): Default primary model for generation
-        FALLBACK_MODEL (str): Default fallback model when primary hits rate limits
     """
 
     def __init__(
