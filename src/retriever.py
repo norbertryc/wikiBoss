@@ -1,22 +1,22 @@
-from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
 from sentence_transformers import SentenceTransformer
 
+from src.vector_store import QdrantManager
 
 class Retriever:
     """Retriever class responsible only for vector search in Qdrant"""
 
     def __init__(
         self,
-        qdrant_url: str,
+        qdrant_manager: QdrantManager,
         collection_name: str,
         embedding_model: str,
         top_k: int = 5,
     ):
-        self.client = QdrantClient(url=qdrant_url)
+        self.client = qdrant_manager.client
         self.model = SentenceTransformer(embedding_model)
         self.collection_name = collection_name
-        self.top_k = top_k
+        self.top_k = top_k 
 
     def embed_query(self, query: str) -> list[float]:
         """Convert query to embedding vector"""

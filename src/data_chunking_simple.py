@@ -25,17 +25,16 @@ class Chunker:
                 "chunk_text": str
             }
         """
-        paragraphs = text.split("\n\n")
 
         chunks: list[dict] = []
         chunk_index = 0
 
-        for para in paragraphs:
-            for ch in self.text_splitter.split_text(para):
-                chunks.append({
-                    "chunk_index": chunk_index,
-                    "chunk_text": ch,
-                })
-                chunk_index += 1
+
+        for ch in self.text_splitter.split_text(text):
+            chunks.append({
+                "chunk_index": chunk_index,
+                "chunk_text": ch,
+            })
+            chunk_index += 1
 
         return chunks
