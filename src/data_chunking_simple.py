@@ -1,40 +1,18 @@
-from langchain_text_splitters import CharacterTextSplitter
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class Chunker:
-    def __init__(
-        self,
-        chunk_size: int = 500,
-        chunk_overlap: int = 100,
-    ) -> None:
-        self.text_splitter = CharacterTextSplitter(
-            separator="\n",
+    def __init__(self, chunk_size: int, chunk_overlap: int) -> None:
+        self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            is_separator_regex=False,
+            separators=["\n\n", "\n", ".", " "],
         )
 
     def chunk_text(self, text: str) -> list[dict]:
-        """
-        Splits text into chunks.
-
-        Returns:
-            list of dicts:
-            {
-                "chunk_index": int,
-                "chunk_text": str
-            }
-        """
-
-        chunks: list[dict] = []
-        chunk_index = 0
-
-
-        for ch in self.text_splitter.split_text(text):
+        chunks = []
+        for idx, ch in enumerate(self.text_splitter.split_text(text)):
             chunks.append({
-                "chunk_index": chunk_index,
+                "chunk_index": idx,
                 "chunk_text": ch,
             })
-            chunk_index += 1
-
         return chunks

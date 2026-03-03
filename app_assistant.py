@@ -7,6 +7,7 @@ from src.retriever import Retriever
 from src.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MULTI_HOP_PLANNER_PROMPT
 from langchain_core.documents import Document
 
+from src.vector_store import QdrantManager
 
 cfg = Config()
 
@@ -18,11 +19,13 @@ class Assistant:
 
     def __init__(self, cfg: Config): 
         self.cfg = cfg 
-        self.retriever = Retriever(qdrant_url=cfg.qdrant_url, 
-                                   collection_name=cfg.base_collection_name, 
-                                   embedding_model=cfg.embedding_model, 
-                                   top_k=cfg.top_k) 
-        
+        qdrant_manager = QdrantManager(url=cfg.qdrant_url)
+        self.retriever = Retriever( 
+            qdrant_manager=qdrant_manager, 
+            collection_name=cfg.base_collection_name, 
+            embedding_model=cfg.embedding_model, 
+            top_k=cfg.top_k )
+
         self.client = self._initialize_client()
 
     def _initialize_client(self):
@@ -42,7 +45,7 @@ class Assistant:
         documents: list[Document] = [] 
         for hit in results: documents.append( 
             Document( 
-                page_content=hit.payload.get("content", ""), 
+                page_content=hit.payload.get("text", ""), 
                 metadata={ "title": hit.payload.get("title", ""), "score": hit.score, 
                 }, 
             ) 
@@ -69,7 +72,7 @@ class Assistant:
         Use LLM to decide whether the query requires multi-hop decomposition.
         Returns a list of subquestions if multi-hop, otherwise an empty list.
         """
-        prompt = MULTI_HOP_PLANNER_PROMPT.format(query=query)  
+        prompt = MULTI_HOP_PLANNER_PROMPT.replace("{query}", query)  
         response = self.client.chat.completions.create(  
             messages=[
                 {"role": "system", "content": "Return ONLY valid JSON."}, 
@@ -101,7 +104,7 @@ class Assistant:
         subquestions = self._plan_query(query)
 
         if not subquestions:
-            raw_results = self.retriever.retrieve( query, top_k=cfg.top_k)
+            raw_results = self.retriever.retrieve(query)
             docs = self._convert_to_documents(raw_results)
             if not docs:
                 return "No documents found for the query."
@@ -112,7 +115,7 @@ class Assistant:
             combined_contexts = [] 
 
             for subq in subquestions:
-                raw_results = self.retriever.retrieve( subq, top_k=cfg.top_k)
+                raw_results = self.retriever.retrieve(subq)
                 docs = self._convert_to_documents(raw_results)
                 if  docs:
                     ctx = self._build_context(docs, max_chars=self.cfg.llm_max_context_chars)

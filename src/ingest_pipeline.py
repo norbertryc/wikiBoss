@@ -10,11 +10,11 @@ from src.vector_store import QdrantManager
 def main():
     cfg = Config()
 
-    raw_data_full = load_wiki_from_jsonl(path=cfg.raw_wiki_jsonl)
+    raw_data = load_wiki_from_jsonl(path=cfg.raw_wiki_jsonl)
 
-    raw_data_limited = (
-        article for i, article in enumerate(raw_data_full) if i < 100
-    )
+    # raw_data_limited = (
+    #     article for i, article in enumerate(raw_data_full) if i < 100
+    # )
 
     chunker = Chunker(
         chunk_size=cfg.chunk_size,
@@ -25,7 +25,7 @@ def main():
     payloads = []
     ids = []
 
-    for article in tqdm(raw_data_limited, desc="Processing articles", unit="art"):
+    for article in tqdm(raw_data, desc="Processing articles", unit="art"):
         article_id = article.get("id", str(uuid.uuid4()))
     
         for c in tqdm(chunker.chunk_text(article["text"]),
@@ -48,7 +48,7 @@ def main():
             
 
     manager = QdrantManager()
-    collection_name = "wiki_test_after_code_review"
+    collection_name = "polish_romantics_and_scientists_02_03_2026"
 
     # manager.delete_collection_if_exists(collection_name=collection_name)
     
