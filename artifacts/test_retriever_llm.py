@@ -35,10 +35,13 @@ test_titles = [
     "Cyprian Kamil Norwid", ]
 
 
+llm_questions = [ 
+    "Kto urodził się wcześniej: Juliusz Słowacki czy Zygmunt Krasiński? O ile lat?", 
+    "Kto żył dłużej: Maria Skłodowska-Curie czy Mikołaj Kopernik? O ile lat?", 
+    "Kto był starszy w momencie śmierci: Hugo Steinhaus czy Stanisław Ulam? O ile lat?",
+     "Który poeta miał większy wpływ na rozwój polskiego romantyzmu: Adam Mickiewicz czy Juliusz Słowacki?", 
+     ]
 
-llm_questions = [ "Kto urodził się wcześniej: Jan Heweliusz czy Mikołaj Kopernik? O ile lat?", 
-                 "Kto żył dłużej: Juliusz Słowacki czy Zygmunt Krasiński? O ile lat?", 
-                 "Który matematyk miał większy wpływ na rozwój analizy funkcjonalnej: Stefan Banach czy Hugo Steinhaus?", ]
 
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(exist_ok=True)

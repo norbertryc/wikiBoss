@@ -22,25 +22,18 @@ Pytanie:
 # ----------------------
 # Multi-hop
 # ----------------------
-MULTI_HOP_PLANNER_PROMPT = """
-Zdecyduj, czy poniższe pytanie wymaga rozbicia na kilka
-niezależnych pytań faktograficznych.
-
-Jeśli NIE wymaga rozbicia, zwróć dokładnie:
-{
-  "multi_hop": false,
-  "subquestions": []
-}
-
-Jeśli WYMAGA rozbicia (np. porównanie dwóch osób), 
-zwróć dokładnie:
-{
-  "multi_hop": true,
-  "subquestions": ["pytanie 1", "pytanie 2"]
-}
-
-Zwróć WYŁĄCZNIE poprawny JSON. Nie dodawaj żadnego innego tekstu.
-
-Pytanie:
-{query}
-"""
+MULTI_HOP_PLANNER_PROMPT = """ 
+Twoim zadaniem jest rozbić pytanie na prostsze pod-pytania, jeśli wymaga ono: 
+- porównania dwóch lub więcej rzeczy, 
+- obliczeń (np. różnica lat, kolejność wydarzeń), 
+- pobrania informacji z więcej niż jednego źródła, 
+ kilku kroków rozumowania. 
+ 
+ Jeśli pytanie wymaga tylko jednego kroku → multi_hop = false. 
+ Zwróć JSON: 
+ { 
+ "multi_hop": true/false, 
+ "subquestions": ["...", "..."] 
+ } 
+ Pytanie: {query} 
+ """

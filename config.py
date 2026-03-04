@@ -29,7 +29,7 @@ class Config(BaseSettings):
     # CHUNKING
     # =========================
     chunk_size: int = 1000
-    chunk_overlap: int = 200
+    chunk_overlap: int = 300
 
     # np. "simple", "spacy", "tiktoken", "sentencepiece"
     tokenization_variant: str = "simple"
@@ -55,7 +55,6 @@ class Config(BaseSettings):
     # =========================
     groq_api_key: str | None = None
     llm_model_name: str = "llama-3.3-70b-versatile"
-    llm_top_k: int = 5
     llm_max_context_chars: int = 9000
 
 
