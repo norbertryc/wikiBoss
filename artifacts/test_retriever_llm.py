@@ -47,25 +47,23 @@ for q in test_queries:
         print("Fragment:", results[0].payload.get("text", "")[:200])
 
 
-# test_titles = [ 
-#     "Adam Mickiewicz", 
-#     "Stefan Banach", 
-#     "Maria Skłodowska-Curie", 
-#     "Mikołaj Kopernik", 
-#     "Cyprian Kamil Norwid", ]
+test_titles = [ 
+    "Adam Mickiewicz", 
+    "Stefan Banach", 
+    "Maria Skłodowska-Curie", 
+    "Mikołaj Kopernik", 
+    "Cyprian Kamil Norwid", ]
 
 
-# llm_questions = [  
-#     "Kto żył dłużej: Maria Skłodowska-Curie czy Mikołaj Kopernik? O ile lat?", 
-#     "Kto był starszy w momencie śmierci: Hugo Steinhaus czy Stanisław Ulam? O ile lat?",
-#     "Kto urodził się wcześniej: Jan Heweliusz czy Aleksander Fredro? O ile lat?",
-#     "Kto żył dłużej: Józef Ignacy Kraszewski czy Stefan Banach? O ile lat?",
-#     "Kto zmarł wcześniej: Mikołaj Kopernik czy Jan Heweliusz?",
-#      ]
+llm_questions = [   
+    "Kto był starszy w momencie śmierci: Hugo Steinhaus czy Stanisław Ulam? O ile lat?",
+    "Kto żył dłużej: Józef Ignacy Kraszewski czy Stefan Banach? O ile lat?",
+    "Kto zmarł wcześniej: Mikołaj Kopernik czy Jan Heweliusz?",
+     ]
 
 
-# ARTIFACTS_DIR = Path("artifacts")
-# ARTIFACTS_DIR.mkdir(exist_ok=True)
+ARTIFACTS_DIR = Path("artifacts")
+ARTIFACTS_DIR.mkdir(exist_ok=True)
 
 # # =========================================================
 # # TEST RETRIEVER AND CHUNKS PRINTING
@@ -109,18 +107,18 @@ for q in test_queries:
 
 # print(f"\nRetriever results saved to {retriever_results_path}")
 
-# # # =========================================================
-# # #  LLM ANSWERS
-# # # =========================================================
+# # =========================================================
+# #  LLM ANSWERS
+# # =========================================================
 
-# print("\n=== LLM ANSWERS ===")
-# for query in llm_questions:
-#     answer = assistant.generate_answer(query)
-#     file_name = "llm_answer_" + "".join(c if c.isalnum() else "_" for c in query) + ".json"
-#     file_path = ARTIFACTS_DIR / file_name
+print("\n=== LLM ANSWERS ===")
+for query in llm_questions:
+    answer = assistant.generate_answer(query)
+    file_name = "llm_answer_" + "".join(c if c.isalnum() else "_" for c in query) + ".json"
+    file_path = ARTIFACTS_DIR / file_name
 
-#     with open(file_path, "w", encoding="utf-8") as f:
-#         json.dump({"question": query, "answer": answer}, f, ensure_ascii=False, indent=2)
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump({"question": query, "answer": answer}, f, ensure_ascii=False, indent=2)
 
-#     print(f"\nQuestion: {query}\nAnswer: {answer}\nSaved to {file_path}")
+    print(f"\nQuestion: {query}\nAnswer: {answer}\nSaved to {file_path}")
 

@@ -109,7 +109,7 @@ class Assistant:
             if not docs:
                 return "No documents found for the query."
             
-            prompt_context = self._build_context(docs, max_chars=self.cfg.llm_max_context_chars)
+            prompt_context = self._build_context(docs, max_chars=self.cfg.llm_max_context_chars_single)
 
         else:
             combined_contexts = [] 
@@ -118,7 +118,7 @@ class Assistant:
                 raw_results = self.retriever.retrieve(subq)
                 docs = self._convert_to_documents(raw_results)
                 if  docs:
-                    ctx = self._build_context(docs, max_chars=self.cfg.llm_max_context_chars)
+                    ctx = self._build_context(docs, max_chars=self.cfg.llm_max_context_chars_per_subq)
                     combined_contexts.append(ctx)
             if not combined_contexts:
                 return "No documents found for any of the subquestions."

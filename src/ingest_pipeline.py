@@ -12,10 +12,6 @@ def main():
 
     raw_data = load_wiki_from_jsonl(path=cfg.raw_wiki_jsonl)
 
-    # raw_data_limited = (
-    #     article for i, article in enumerate(raw_data_full) if i < 100
-    # )
-
     chunker = Chunker(
         chunk_size=cfg.chunk_size,
         chunk_overlap=cfg.chunk_overlap
@@ -27,11 +23,27 @@ def main():
 
     for article in tqdm(raw_data, desc="Processing articles", unit="art"):
         article_id = article.get("id", str(uuid.uuid4()))
-    
+
+        lead = article["text"].split("\n\n")[0].strip()
+
+        texts.append(lead)
+        payloads.append({
+            "article_id": article_id,
+            "title": article["title"],
+            "url": article.get("url", ""),
+            "chunk_index": 0,
+            "chunk_size": cfg.chunk_size,
+            "chunk_overlap": cfg.chunk_overlap,
+            "tokenization_variant": cfg.tokenization_variant,
+            "text": lead
+        })
+        ids.append(str(uuid.uuid4()))
+
         for c in tqdm(chunker.chunk_text(article["text"]),
                       desc="Chunking",
                       leave=False,
                       unit="chunk"):
+
             texts.append(c["chunk_text"])
 
             payloads.append({
@@ -42,13 +54,12 @@ def main():
                 "chunk_size": cfg.chunk_size,
                 "chunk_overlap": cfg.chunk_overlap,
                 "tokenization_variant": cfg.tokenization_variant,
-                "text": c["chunk_text"],
+                "text": c["chunk_text"]
             })
             ids.append(str(uuid.uuid4()))
-            
 
     manager = QdrantManager()
-    collection_name = "polish_romantics_and_scientists_02_03_2026"
+    collection_name = "polish_romantics_and_scientists_10_03_2026"
 
     # manager.delete_collection_if_exists(collection_name=collection_name)
     
@@ -69,4 +80,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

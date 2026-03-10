@@ -47,7 +47,7 @@ class Config(BaseSettings):
     # RETRIEVER / VECTOR STORE
     # =========================
     qdrant_url: str = "http://localhost:6333"
-    base_collection_name: str = "polish_romantics_and_scientists_02_03_2026"
+    base_collection_name: str = "polish_romantics_and_scientists_10_03_2026"
     top_k: int = 20
 
     # =========================
@@ -55,8 +55,8 @@ class Config(BaseSettings):
     # =========================
     groq_api_key: str | None = None
     llm_model_name: str = "llama-3.3-70b-versatile"
-    llm_max_context_chars: int = 9000
-
+    llm_max_context_chars_single: int = 9000      # dla normalnych pytań
+    llm_max_context_chars_per_subq: int = 2000    # dla każdego subquestion
 
     # =========================
     # DERIVED VALUES
