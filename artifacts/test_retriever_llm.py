@@ -27,79 +27,100 @@ retriever = Retriever(
 
 assistant = Assistant(cfg) 
 
-test_titles = [ 
-    "Adam Mickiewicz", 
-    "Stefan Banach", 
-    "Maria Skłodowska-Curie", 
-    "Mikołaj Kopernik", 
-    "Cyprian Kamil Norwid", ]
-
-
-llm_questions = [ 
-    "Kto urodził się wcześniej: Juliusz Słowacki czy Zygmunt Krasiński? O ile lat?", 
-    "Kto żył dłużej: Maria Skłodowska-Curie czy Mikołaj Kopernik? O ile lat?", 
-    "Kto był starszy w momencie śmierci: Hugo Steinhaus czy Stanisław Ulam? O ile lat?",
-     "Który poeta miał większy wpływ na rozwój polskiego romantyzmu: Adam Mickiewicz czy Juliusz Słowacki?", 
-     ]
-
-
-ARTIFACTS_DIR = Path("artifacts")
-ARTIFACTS_DIR.mkdir(exist_ok=True)
-
 # =========================================================
-# TEST RETRIEVER AND CHUNKS PRINTING
+# TEST: SPRAWDŹ, CZY W QDRANT SĄ DATY ŚMIERCI
 # =========================================================
 
-for title in test_titles: 
-    print(f"\n=== RETRIEVER TEST FOR: {title} ===")
-    docs = retriever.get_chunks_by_title(title)
-    print(f"Liczba chunków: {len(docs)}")
+test_queries = [
+    "zm. 1543",
+    "zm. Mikołaj Kopernik",
+    "Data śmierci (zm.) Mikołaj Kopernik",
+    "Mikołaj Kopernik zm.",
+]
 
-    if not docs:
-        print("Brak chunków w vector store.")
-        continue
+print("\n=== TEST RETRIEVERA: DATY ŚMIERCI ===")
+for q in test_queries:
+    results = retriever.retrieve(q)
+    print(f"\nZapytanie: {q}")
+    print("Liczba trafień:", len(results))
+    if results:
+        print("Fragment:", results[0].payload.get("text", "")[:200])
 
-    for i, d in enumerate(docs[:5], 1):  # pokaż pierwsze 5 chunków
-        text_snippet = d.payload.get("text", "")[:150]
-        print(f"[{i}] {text_snippet}...")
 
-# =========================================================
-# RETRIEVER RESULTS TO JSON
-# =========================================================
-print(f"\n=== RETRIEVER TEST TO JSON ===")
+# test_titles = [ 
+#     "Adam Mickiewicz", 
+#     "Stefan Banach", 
+#     "Maria Skłodowska-Curie", 
+#     "Mikołaj Kopernik", 
+#     "Cyprian Kamil Norwid", ]
 
-retriever_results_path = ARTIFACTS_DIR / "retriever_results_romantics_and_scientists.json"
-all_results = {}
 
-for title in test_titles:
-    docs = retriever.get_chunks_by_title(title)
-    all_results[title] = []
+# llm_questions = [  
+#     "Kto żył dłużej: Maria Skłodowska-Curie czy Mikołaj Kopernik? O ile lat?", 
+#     "Kto był starszy w momencie śmierci: Hugo Steinhaus czy Stanisław Ulam? O ile lat?",
+#     "Kto urodził się wcześniej: Jan Heweliusz czy Aleksander Fredro? O ile lat?",
+#     "Kto żył dłużej: Józef Ignacy Kraszewski czy Stefan Banach? O ile lat?",
+#     "Kto zmarł wcześniej: Mikołaj Kopernik czy Jan Heweliusz?",
+#      ]
 
-    for i, d in enumerate(docs[:5]):
-        all_results[title].append({
-            "rank": i + 1,
-            "title": d.payload.get("title"),
-            "score": float(d.score) if hasattr(d, "score") else None,
-            "text": d.payload.get("text", ""),
-        })
 
-with open(retriever_results_path, "w", encoding="utf-8") as f:
-    json.dump(all_results, f, ensure_ascii=False, indent=2)
-
-print(f"\nRetriever results saved to {retriever_results_path}")
+# ARTIFACTS_DIR = Path("artifacts")
+# ARTIFACTS_DIR.mkdir(exist_ok=True)
 
 # # =========================================================
-# #  LLM ANSWERS
+# # TEST RETRIEVER AND CHUNKS PRINTING
 # # =========================================================
 
-print("\n=== LLM ANSWERS ===")
-for query in llm_questions:
-    answer = assistant.generate_answer(query)
-    file_name = "llm_answer_" + "".join(c if c.isalnum() else "_" for c in query) + ".json"
-    file_path = ARTIFACTS_DIR / file_name
+# for title in test_titles: 
+#     print(f"\n=== RETRIEVER TEST FOR: {title} ===")
+#     docs = retriever.get_chunks_by_title(title)
+#     print(f"Liczba chunków: {len(docs)}")
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump({"question": query, "answer": answer}, f, ensure_ascii=False, indent=2)
+#     if not docs:
+#         print("Brak chunków w vector store.")
+#         continue
 
-    print(f"\nQuestion: {query}\nAnswer: {answer}\nSaved to {file_path}")
+#     for i, d in enumerate(docs[:5], 1):  # pokaż pierwsze 5 chunków
+#         text_snippet = d.payload.get("text", "")[:150]
+#         print(f"[{i}] {text_snippet}...")
+
+# # =========================================================
+# # RETRIEVER RESULTS TO JSON
+# # =========================================================
+# print(f"\n=== RETRIEVER TEST TO JSON ===")
+
+# retriever_results_path = ARTIFACTS_DIR / "retriever_results_romantics_and_scientists.json"
+# all_results = {}
+
+# for title in test_titles:
+#     docs = retriever.get_chunks_by_title(title)
+#     all_results[title] = []
+
+#     for i, d in enumerate(docs[:5]):
+#         all_results[title].append({
+#             "rank": i + 1,
+#             "title": d.payload.get("title"),
+#             "score": float(d.score) if hasattr(d, "score") else None,
+#             "text": d.payload.get("text", ""),
+#         })
+
+# with open(retriever_results_path, "w", encoding="utf-8") as f:
+#     json.dump(all_results, f, ensure_ascii=False, indent=2)
+
+# print(f"\nRetriever results saved to {retriever_results_path}")
+
+# # # =========================================================
+# # #  LLM ANSWERS
+# # # =========================================================
+
+# print("\n=== LLM ANSWERS ===")
+# for query in llm_questions:
+#     answer = assistant.generate_answer(query)
+#     file_name = "llm_answer_" + "".join(c if c.isalnum() else "_" for c in query) + ".json"
+#     file_path = ARTIFACTS_DIR / file_name
+
+#     with open(file_path, "w", encoding="utf-8") as f:
+#         json.dump({"question": query, "answer": answer}, f, ensure_ascii=False, indent=2)
+
+#     print(f"\nQuestion: {query}\nAnswer: {answer}\nSaved to {file_path}")
 
